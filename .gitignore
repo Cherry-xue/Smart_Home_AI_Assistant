@@ -1,0 +1,37 @@
+# ---------------- 密钥与本地配置（重要：.env 含 root 密码，绝不提交）----------------
+.env
+.env.local
+*.env
+
+# ---------------- Python ----------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ---------------- 本地数据（不应进仓库）----------------
+chroma_db/
+backend/data/
+gateway/simulator/*.log
+*.sqlite
+*.sqlite3
+checkpoints.sqlite
+
+# ---------------- 前端 ----------------
+node_modules/
+frontend/dist/
+.vite/
+
+# ---------------- 编辑器 / 系统 ----------------
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

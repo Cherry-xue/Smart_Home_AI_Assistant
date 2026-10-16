@@ -1,0 +1,78 @@
+# ---------------------------------------------------------------------------
+# 场景意图模板 —— 给"自然语言场景"一个可解释的判据
+#
+# 为什么需要它
+# ------------
+# LLM 生成的动作序列可能自相矛盾。最典型的是"看电影模式里把主灯开到 100%"：
+# 这两条动作作用在**不同的设备**上，光靠"同一台设备同一能力被设了两次"是抓不到的。
+#
+# 所以这里为常见场景定义"合理区间"（观影时房间照明上限 40% 等）。
+# 超出区间的动作会被**剔除**，并给出可复现的原因 ——
+# 这正是规划书 §14.1 要求的"能复现被剔除的动作及原因"。
+#
+# 规则动作（rule.action）
+#   reject : 违反场景硬约束，剔除该动作
+#   clamp  : 可调整到区间内，夹取后保留
+#   warn   : 只提示，不改变动作
+#
+# 匹配：按 keywords 在场景名称/自然语言描述里做包含匹配，命中第一个为准。
+# 没命中任何意图时用 `default`（即不做场景层约束，只做能力校验）。
+# ---------------------------------------------------------------------------
+
+intents:
+  movie:
+    label: 观影
+    keywords: [看电影, 观影, 电影, 影片, 影院, 大片]
+    description: 营造观影氛围：环境偏暗、遮光、温度舒适
+    rules:
+      - { capability: brightness, action: reject, max: 40,  reason: "观影场景需要环境偏暗，照明不宜超过 40%" }
+      - { capability: position,   action: reject, max: 30,  reason: "观影场景需要遮光，窗帘开合度不宜超过 30%" }
+      - { capability: target_temp, action: clamp, min: 24, max: 27, reason: "观影久坐，温度建议保持在 24~27℃" }
+
+  sleep:
+    label: 睡眠
+    keywords: [睡觉, 睡眠, 就寝, 入睡, 晚安, 休息]
+    description: 入睡准备：灯光降到最低、遮光、温度略高
+    rules:
+      - { capability: brightness, action: reject, max: 15,  reason: "睡眠场景照明应降到 15% 以下" }
+      - { capability: position,   action: reject, max: 10,  reason: "睡眠场景需要完全遮光" }
+      - { capability: volume,     action: reject, max: 20,  reason: "夜间音量不宜超过 20%，避免影响休息" }
+      - { capability: target_temp, action: clamp, min: 25, max: 28, reason: "睡眠时段温度建议 25~28℃" }
+
+  wake:
+    label: 起床
+    keywords: [起床, 叫醒, 早上好, 唤醒, 晨起]
+    description: 温和唤醒：逐步提亮、拉开窗帘
+    rules:
+      - { capability: brightness, action: reject, min: 30, reason: "起床场景亮度不宜低于 30%，否则起不到唤醒作用" }
+      - { capability: position,   action: reject, min: 60, reason: "起床场景应拉开窗帘引入自然光" }
+
+  away:
+    label: 离家
+    keywords: [离家, 出门, 外出, 上班, 不在家]
+    description: 离家：关闭非必要负载、进入安防状态
+    rules:
+      - { capability: brightness, action: reject, min: 1, reason: "离家场景应关闭照明" }
+      - { capability: volume,     action: reject, min: 1, reason: "离家场景应关闭影音设备音量" }
+    note: "离家场景涉及布防与门锁，属高风险动作，只会生成待确认建议，不会自动执行"
+
+  home:
+    label: 回家
+    keywords: [回家, 到家, 归来]
+    description: 回家：开灯、舒适温度、开窗帘
+    rules:
+      - { capability: brightness, action: reject, max: 0, reason: "回家场景应打开照明（本条用于表达『必须开灯』）", disabled: true }
+
+  cooking:
+    label: 下厨
+    keywords: [做饭, 下厨, 烹饪, 炒菜]
+    description: 下厨：厨房照明充足、开启排风
+    rules:
+      - { capability: brightness, action: reject, max: 0, reason: "厨房操作需要充足照明", disabled: true }
+
+# 未命中任何意图时的默认行为：不做场景层约束（仍会做能力校验与重复检测）
+default:
+  label: 通用
+  keywords: []
+  description: 无特定场景约束，只做能力校验与重复动作检测
+  rules: []

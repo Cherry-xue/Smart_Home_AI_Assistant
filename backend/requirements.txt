@@ -1,0 +1,66 @@
+# ============================================================
+# 智能家居 AI 助手平台 · 后端依赖清单
+# 环境：conda ai0707（Python 3.13.15）
+# 安装：conda activate ai0707 && pip install -r requirements.txt
+# 依据：文档/技术选型方案.md §6.1
+# 最后核对：2026-10-14（版本号均为当日 PyPI 实测）
+# ============================================================
+
+# ---------------- core ----------------
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+python-dotenv
+jinja2                      # 首页模板（可选，沿用既有项目写法）
+python-multipart            # 文件上传：说明书 / CSV 导入
+
+# ---------------- db（同步驱动）----------------
+SQLAlchemy>=2.0.52
+PyMySQL>=1.2.0
+# MySQL 8 默认认证插件是 caching_sha2_password；非 TLS 连接下 PyMySQL 需要
+# cryptography 才能完成 RSA 密钥交换。缺它不是"连不上"，而是"服务端密码缓存
+# 被清空后（如 MySQL 重启）才开始失败"——属于埋雷，必须装。
+cryptography>=42.0.0
+alembic==1.20.0
+sqlglot                     # 仅启用 NL2SQL 时需要：AST 只读校验
+
+# ---------------- mqtt ----------------
+aiomqtt==2.5.1
+
+# ---------------- agent ----------------
+langchain==1.4.5
+langgraph==1.2.15
+langchain-openai==1.7.1
+langgraph-checkpoint-mysql[pymysql]==3.0.0
+tiktoken                    # trim_messages 的 token 计数 / 成本统计
+
+# ---------------- rag ----------------
+chromadb==1.5.9
+langchain-chroma==1.1.0
+langchain-text-splitters==1.1.3
+pypdf==6.19.0
+
+# ---------------- rerank ----------------
+# rerank 不走 OpenAI 兼容协议，需要 DashScope 原生 SDK
+dashscope>=1.22.2
+
+# ---------------- jobs / auth / obs ----------------
+APScheduler==3.11.3
+PyJWT==2.15.1
+loguru==0.7.3
+httpx==0.28.1
+
+# ---------------- 数据生成器（gateway/simulator 独立进程）----------------
+paho-mqtt
+PyYAML
+
+# ============================================================
+# 明确不装（见选型方案 §3.5）
+#   langchain-community / langchain-classic / llama-index-* / redis / celery
+# 说明：
+#   1. 聊天与 Embedding 走 langchain-openai + DashScope compatible-mode，
+#      不用 langchain_community.chat_models.ChatTongyi（旧写法）
+#   2. 检索用 langchain-chroma，不引入 LlamaIndex（避免两套编排框架混用）
+#   3. checkpoint 用 langgraph-checkpoint-mysql，不引入 Redis
+# ============================================================

@@ -1,0 +1,171 @@
+# ============================================================================
+# 数据生成器 · 物理与行为档案
+# ============================================================================
+# 分工约定（重要）：
+#   · 设备【清单】从数据库读（devices + device_capabilities）—— 保证生成器只
+#     为已登记的设备产数据，而且取值不会超出能力档案声明的范围。
+#   · 物理【参数】放在本文件 —— 删/加设备只改数据库，改"像不像真的"只改这里。
+#
+# 为什么数值要"像真的"：
+#   随机数产出的数据没法支撑"能耗分析""连续 6 小时无活动"这类结论。
+#   温度要有惯性、功率要有启停尖峰、人的活动要有节律 —— 否则演示经不起追问。
+# ============================================================================
+
+environment:
+  timezone: Asia/Shanghai
+
+  # ---- 预设 A：夏季高温日（当前启用）----
+  # 不这么设，空调就"永远没有制冷需求" —— 因为空调只能制冷，
+  # 室外只有 27℃ 时室温根本降不到设定值以下，能耗演示会全是待机功耗。
+  outdoor_temp_base: 27.0        # 日均气温 ℃
+  outdoor_temp_amplitude: 5.0    # 日较差的一半（峰谷差 ≈ 10℃ → 22~32℃）
+  indoor_bias: 2.0               # 无空调时室内相对室外的自然偏移 ℃
+
+  # ---- 预设 B：春秋过渡月（想换一套数据时启用，注释掉上面三行）----
+  # 室外 14~27℃，空调基本不启动，用于对比"高温月 vs 过渡月"的电费差异
+  # outdoor_temp_base: 20.5
+  # outdoor_temp_amplitude: 6.5
+  # indoor_bias: 1.5
+
+  outdoor_temp_peak_hour: 15     # 最高温出现的时刻
+
+# ---------------------------------------------------------------------------
+# 分时电价（元/kWh）—— 已移到项目级共享配置 config/tariff.yaml
+#
+# 原因：电价是【业务规则】而非物理参数，后端落库时要用它给
+# energy_readings.tariff_period 打标签、能耗 Agent 要用它算省费金额。
+# 两处各写一份必然漂移，所以统一放在 config/tariff.yaml。
+# 生成器做功率推演时用不到电价，故此处不再重复定义。
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 房间热工参数：thermal_tau_min 是"一阶惯性"的时间常数（分钟）
+# τ 越大，温度变化越慢（房间越"保温"）
+# ---------------------------------------------------------------------------
+rooms:
+  entryway:       { thermal_tau_min: 40, volume_m3: 12 }
+  living_room:    { thermal_tau_min: 25, volume_m3: 60 }
+  kitchen:        { thermal_tau_min: 15, volume_m3: 20 }
+  bathroom:       { thermal_tau_min: 20, volume_m3: 15 }
+  balcony:        { thermal_tau_min: 45, volume_m3: 15 }
+  master_bedroom: { thermal_tau_min: 30, volume_m3: 40 }
+  second_bedroom: { thermal_tau_min: 30, volume_m3: 35 }
+
+# ---------------------------------------------------------------------------
+# 各房间"有人"的时间窗（用于灯、雷达、空气质量等）
+# prob = 该时段内某个时刻有人的概率
+# ---------------------------------------------------------------------------
+occupancy:
+  living_room:
+    - { start: "07:00", end: "09:00", prob: 0.55 }
+    - { start: "12:00", end: "13:30", prob: 0.35 }
+    - { start: "18:00", end: "23:00", prob: 0.85 }
+  master_bedroom:
+    - { start: "22:30", end: "23:59", prob: 0.95 }
+    - { start: "00:00", end: "07:00", prob: 0.95 }
+  second_bedroom:              # 奶奶房间：白天也常在家
+    - { start: "21:00", end: "23:59", prob: 0.92 }
+    - { start: "00:00", end: "05:30", prob: 0.92 }
+    - { start: "05:30", end: "06:30", prob: 0.30 }   # 早起
+    - { start: "09:00", end: "11:30", prob: 0.60 }
+    - { start: "13:00", end: "16:00", prob: 0.65 }   # 午休
+    - { start: "17:00", end: "20:30", prob: 0.45 }
+  kitchen:
+    - { start: "06:30", end: "08:00", prob: 0.70 }
+    - { start: "11:30", end: "13:00", prob: 0.65 }
+    - { start: "17:30", end: "19:30", prob: 0.70 }
+  bathroom:
+    - { start: "06:30", end: "07:30", prob: 0.55 }
+    - { start: "20:00", end: "21:30", prob: 0.60 }
+  entryway:
+    - { start: "07:50", end: "08:20", prob: 0.55 }
+    - { start: "18:00", end: "18:40", prob: 0.55 }
+  balcony:
+    - { start: "10:00", end: "11:00", prob: 0.20 }
+
+# ---------------------------------------------------------------------------
+# 设备类型档案
+#   on_windows: 默认开关时段（本地规则，模拟"真实家庭的使用习惯"）
+#   power_*   : 功耗（瓦），用于能耗演示
+# ---------------------------------------------------------------------------
+device_types:
+  light:
+    on_windows: ["18:00-23:30", "06:00-07:00"]
+    power_on_w: 9.0
+    power_off_w: 0.4
+    brightness: [20, 100]
+  curtain:
+    # 窗帘按"开合度"而不是开关：白天开、夜里关
+    position_by_hour: { "07:00-19:00": 100, "19:00-07:00": 0 }
+    power_on_w: 5.0          # 只有电机动作时耗电，这里给个很小的均值
+    power_off_w: 0.3
+  ac:
+    # 空调：白天热的时候开，夜里睡觉也开（夏夜卧室同理）
+    # 注意：这里的时段是"用户把空调打开"的时段；
+    # 压缩机实际运转与否由温度 + 设定值 + 死区决定（见 physics.py），
+    # 所以功率曲线会呈现真实的间歇启停，而不是一条平线。
+    on_windows: ["11:00-17:00", "22:00-07:00"]
+    target_temp: { day: 26, night: 27 }
+    power_cooling_w: 1100.0  # 压缩机运转
+    power_idle_w: 85.0       # 压缩机停机、仅室内风扇
+    power_off_w: 1.2         # 整机待机
+    # 制冷时间常数（分钟）。必须【明显小于房间的自然吸热速率倒数的 6 倍】，
+    # 否则制冷追不上吸热，压缩机就会一直转、看不到启停 ——
+    # 这是"能耗曲线是否可信"的关键参数。
+    ac_cooling_tau_min: 5.0
+  tv:
+    on_windows: ["19:00-22:30"]
+    power_on_w: 92.0
+    power_off_w: 0.6
+    volume: [10, 35]
+  speaker:
+    on_windows: ["07:00-08:00", "19:00-21:00"]
+    power_on_w: 12.0
+    power_off_w: 1.5
+    volume: [15, 45]
+  humidifier:
+    on_windows: ["22:00-06:30"]
+    power_on_w: 26.0
+    power_off_w: 0.4
+    target_humidity: 55
+  water_heater:
+    # 热水器是能耗演示里最大的负载：加热时 1800W
+    on_windows: ["06:00-07:30", "20:00-21:30"]
+    power_heating_w: 1800.0
+    power_idle_w: 2.0
+    target_temp: 60
+  door_lock:      { power_on_w: 0.2, power_off_w: 0.2 }
+  main_breaker:   { power_on_w: 0.0, power_off_w: 0.0 }
+  temp_sensor:    { power_on_w: 0.3, power_off_w: 0.3 }
+  air_sensor:     { power_on_w: 0.4, power_off_w: 0.4 }
+  gas_sensor:     { power_on_w: 0.3, power_off_w: 0.3 }
+  water_leak_sensor: { power_on_w: 0.2, power_off_w: 0.2 }
+  smoke_sensor:   { power_on_w: 0.2, power_off_w: 0.2 }
+  mmwave_radar:   { power_on_w: 0.8, power_off_w: 0.8 }
+  door_sensor:    { power_on_w: 0.1, power_off_w: 0.1 }
+  camera:         { on_windows: [], power_on_w: 3.5, power_off_w: 0.1 }
+
+# ---------------------------------------------------------------------------
+# 室内环境基线
+# ---------------------------------------------------------------------------
+indoor:
+  humidity_base: 52.0
+  humidity_amplitude: 6.0
+  humidity_ac_drop: 7.0        # 空调制冷时除湿，湿度下降
+  humidity_shower_spike: 22.0  # 洗澡时卫生间湿度飙升
+  pm25_base: 18.0
+  pm25_amplitude: 7.0
+  pm25_cooking_spike: 65.0     # 做饭时 PM2.5 飙升
+  co2_base: 520.0
+  co2_per_person: 260.0        # 每多一个人带来的 ppm
+  co2_cooking_spike: 400.0
+
+# ---------------------------------------------------------------------------
+# 雷达活动量（照护 Agent 的数据源）
+# ---------------------------------------------------------------------------
+activity:
+  sleeping_level: [0, 12]      # 睡觉时活动量
+  still_level: [25, 55]        # 醒着但静止（坐着）
+  moving_level: [60, 100]      # 走动
+  night_wake_window: "02:00-03:30"   # 起夜时段
+  no_activity_prob: 0.015      # 每小时"完全没活动"的额外概率（用于制造异常）

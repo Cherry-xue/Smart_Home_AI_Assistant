@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智能家居 AI 助手 · 态势大屏</title>
+    <style>
+      /* 首屏底色先铺上，避免加载瞬间白闪 */
+      html,
+      body {
+        margin: 0;
+        background: #070b16;
+        color: #c9d6e8;
+      }
+      #app-loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font: 14px/1.6 'Microsoft YaHei', sans-serif;
+        color: #4d6b96;
+        letter-spacing: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"><div id="app-loading">正在载入态势大屏…</div></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
