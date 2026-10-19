@@ -26,7 +26,7 @@ class KnowledgeSearchOut(BaseModel):
     hits: list[KnowledgeHitOut] = Field(default_factory=list)
     note: str = Field(
         "",
-        description="检索只负责召回，不生成回答；引用给用户时必须带上 source_file 与 section",
+        description="可选提示（如向量库为空）；没有要提示的就留空",
     )
 
 

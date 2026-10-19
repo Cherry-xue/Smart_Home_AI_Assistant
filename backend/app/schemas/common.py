@@ -71,6 +71,22 @@ class RoomsOut(BaseModel):
     items: list[RoomCardOut]
 
 
+class HomeOut(BaseModel):
+    """一套房（顶部切换用）。"""
+
+    id: int
+    name: str
+    timezone: str | None = None
+    rooms: int = Field(0, description="房间数")
+    devices: int = Field(0, description="启用中的设备数")
+    online: int = Field(0, description="在线设备数")
+
+
+class HomesOut(BaseModel):
+    items: list[HomeOut] = Field(default_factory=list)
+    total: int = 0
+
+
 # ---------------------------------------------------------------- 设备
 class DeviceOut(BaseModel):
     id: int
@@ -144,10 +160,95 @@ class DeviceReadingsOut(BaseModel):
     high_risk: bool
     from_: dt.datetime = Field(..., alias="from")
     to: dt.datetime
+    #: **原始行数**（库里真实有多少条），不是返回的点数
     row_count: int
+    #: 实际返回的点数。row_count 大而 returned_count 小时，说明被降采样了
+    returned_count: int = 0
+    #: 是否降采样过。前端应当据此提示"曲线是抽稀的，别用它读精确极值"
+    downsampled: bool = False
+    #: 抽稀步长（每 stride 行取 1 点）；未抽稀时为 1
+    stride: int = 1
     stale_rows: int
     quality_summary: dict[str, int] = Field(default_factory=dict)
     metrics: dict[str, MetricSeriesOut] = Field(default_factory=dict)
     note: str | None = None
 
     model_config = {"populate_by_name": True}
+
+
+# ============================================================ 套房的增删
+#: 新建套房的默认房间：**一个都不建**。
+#:
+#: 为什么不给占位房间：房间的"名字"和"位置"是同一件事，都在户型编辑器里定。
+#: 自动生成的占位会变成"图上没有但列表里有"的幽灵房间，只能靠「移除」清掉 ——
+#: 与其让用户清理，不如一开始就不造。
+DEFAULT_ROOM_NAMES: tuple[str, ...] = ()
+
+
+class HomeCreateIn(BaseModel):
+    """新建套房。
+
+    `rooms` 传的是**房间显示名**（用户可以起中文名），房间编码由后端生成。
+    为什么不收编码：编码要进 MQTT topic，带 `/ + #` 会破坏主题结构，
+    让用户填等于给协议留后门。
+    """
+
+    name: str = Field(..., min_length=1, max_length=64, description="套房名称（自定义）")
+    rooms: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_ROOM_NAMES),
+        description="房间名列表（0~24 个，不能重名）。"
+        "缺省为空：房间在「编辑房子」里画框时命名，后端不再生成占位。",
+    )
+    timezone: str = Field("Asia/Shanghai", description="时区")
+
+
+class HomeCreatedOut(BaseModel):
+    home_id: int
+    name: str
+    rooms: list[dict[str, str]] = Field(default_factory=list, description="[{code, name}]")
+    message: str
+
+
+class HomeDeletedItem(BaseModel):
+    """删除结果：删了多少数据，让用户知道"我删掉了什么"。"""
+
+    home_id: int
+    name: str
+    deleted: dict[str, int] = Field(default_factory=dict)
+    floorplan_removed: bool = False
+    message: str
+
+
+class RoomCreateIn(BaseModel):
+    """在「编辑户型」里新增一个房间。"""
+
+    name: str = Field(..., min_length=1, max_length=24, description="房间名（可随时再改）")
+
+
+class RoomCreatedOut(BaseModel):
+    room_id: int
+    code: str
+    name: str
+    message: str
+
+
+class HomeRenameIn(BaseModel):
+    """给套房改名（「编辑房子」里改）。"""
+
+    name: str = Field(..., min_length=1, max_length=64, description="新的套房名称")
+
+
+class HomeRenamedOut(BaseModel):
+    home_id: int
+    name: str
+    changed: bool = Field(..., description="名字实际有没有变")
+    message: str
+
+
+class RoomDeletedOut(BaseModel):
+    room_id: int
+    code: str
+    name: str
+    devices: int = Field(0, description="随房间一起删掉的设备数")
+    deleted: dict[str, int] = Field(default_factory=dict, description="各表清理行数")
+    message: str

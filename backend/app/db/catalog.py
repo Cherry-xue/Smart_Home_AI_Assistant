@@ -79,6 +79,33 @@ class DeviceCatalog:
     # ---------------------------------------------------------------- 加载
     @classmethod
     def load(cls, engine: Engine) -> DeviceCatalog:
+        devices, rooms = cls._read(engine)
+        return cls(devices, rooms)
+
+    # ---------------------------------------------------------------- 就地刷新
+    def refresh(self, engine: Engine) -> DeviceCatalog:
+        """**就地**重新加载并返回 self（不新建对象）。
+
+        ⚠️⚠️ 为什么必须是"就地"而不是 `app.state.catalog = DeviceCatalog.load(...)`：
+        这个目录被**多个长生命周期组件持有引用** ——
+        `Ingestor.catalog`（`api/main.py` 启动时传入）、`QualityEvaluator`（又存了一份）、
+        以及启动时的预热逻辑。只换 `app.state.catalog` 的话，**API 能看到新设备，
+        但采集器还在用旧目录**，于是新设备的报文会被判成"未知设备"全部拒收 ——
+        现象是"界面上设备加进来了、生成器也在为它产数据，但库里一行都没有"。
+        （2026-10-16 实测踩到：api.log 里刷了 26 条「未知设备 light_1」。）
+
+        改这四个属性而不是对象本身，所有持有者就都能看到最新数据。
+        """
+        devices, rooms = self._read(engine)
+        self._by_code = devices
+        self._by_id = {d.id: d for d in devices.values()}
+        self._rooms = rooms
+        self._rooms_by_code = {r.code: r for r in rooms}
+        return self
+
+    @staticmethod
+    def _read(engine: Engine) -> tuple[dict[str, DeviceInfo], list[RoomInfo]]:
+        """从库里读一份最新快照。`load()` 与 `refresh()` 共用，避免两份查询漂移。"""
         with engine.connect() as conn:
             room_rows = conn.execute(
                 text(
@@ -149,7 +176,7 @@ class DeviceCatalog:
             RoomInfo(id=r.id, code=r.code, name=r.name, sort_no=r.sort_no, home_id=r.home_id)
             for r in room_rows
         ]
-        return cls(devices, rooms)
+        return devices, rooms
 
     # ---------------------------------------------------------------- 查询
     def get(self, code: str) -> DeviceInfo | None:
@@ -180,6 +207,26 @@ class DeviceCatalog:
 
     def home_ids(self) -> list[int]:
         return sorted({r.home_id for r in self._rooms})
+
+    def for_home(self, home_id: int | None) -> DeviceCatalog:
+        """返回**只含这一套房**设备与房间的目录视图。
+
+        为什么是"另建一份目录"，而不是给每个查询方法加 `home_id` 参数：
+        编排链路 `nl → planner → executor` 全程只认 `DeviceCatalog` 这一个入口，
+        给它一份**已经过滤好的**目录，三处逻辑一行都不用改，也不会漏掉某一处。
+        反过来的写法（到处传 home_id）只要有一处忘传，就会出现
+        "在 2 号房编排，结果编排到了 1 号房的设备"。
+
+        ⚠️ 返回的是**新对象，且只在当次请求内使用**。
+        绝不能拿它去覆盖 `app.state.catalog` —— 采集器、质量评估器等长生命周期
+        组件必须持有全量目录，否则别的套房报文会被判成"未知设备"全部拒收
+        （原因见 `refresh()` 的注释）。
+        """
+        if home_id is None:
+            return self
+        devices = {c: d for c, d in self._by_code.items() if d.home_id == home_id}
+        rooms = [r for r in self._rooms if r.home_id == home_id]
+        return DeviceCatalog(devices, rooms)
 
     def __len__(self) -> int:
         return len(self._by_code)

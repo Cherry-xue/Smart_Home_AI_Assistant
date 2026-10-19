@@ -75,7 +75,6 @@ def search(
         elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
         collection_size=collection_count(),
         hits=[KnowledgeHitOut(**h.as_dict()) for h in hits],
-        note="检索只负责召回片段；引用给用户时必须带上 source_file 与 section，不得声称『说明书上写了』却指不出来源",
     )
 
 

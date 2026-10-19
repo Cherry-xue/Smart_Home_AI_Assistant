@@ -52,6 +52,16 @@ class Checker:
         print("-" * 76)
 
 
+def _db_scalar(sql: str):
+    """直接查一个标量（只用于校验响应与库是否一致）。"""
+    from sqlalchemy import text as _text
+
+    from app.db.session import SessionLocal
+
+    with SessionLocal() as db:
+        return db.execute(_text(sql)).scalar()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="M2 API 验收")
     ap.add_argument("--base-url", default="http://127.0.0.1:8000")
@@ -92,7 +102,19 @@ def main() -> int:
              f"MySQL {h['database'].get('version')} / {h['database'].get('response_ms')}ms")
     ck.check("身份是最小权限账号", "app_rw" in str(h["database"].get("current_user")),
              str(h["database"].get("current_user")))
-    ck.check("设备总数正确（32）", h["devices"]["total"] == 32, str(h["devices"]))
+    # 设备总数按**库里实际的启用设备数**断言，而不是写死 32：
+    # 多了第二套演示房（或用户自己加了设备）之后，写死的数字一定过期。
+    expected_devices = _db_scalar("SELECT COUNT(*) FROM devices WHERE enabled = 1")
+    ck.check(
+        f"设备总数与库一致（{expected_devices}）",
+        h["devices"]["total"] == expected_devices,
+        str(h["devices"]),
+    )
+    # 多套房下要能区分：1 号房（演示家庭）仍然 32 台
+    r1 = client.get("/api/devices", params={"home_id": 1})
+    if r1.status_code == 200:
+        n1 = r1.json()["meta"]["summary"]["devices"]
+        ck.check("按套房过滤生效（1 号房）", n1 > 0 and n1 <= expected_devices, f"{n1} 台")
     ck.check("高风险设备 3 台", h["devices"]["high_risk"] == 3)
     ck.check("高风险自动执行恒为 false（安全红线）", h["high_risk_auto_exec"] is False)
     ck.check("缓存已预热（重启即有数据）", h["cache"]["preloaded"] > 0,
@@ -288,7 +310,9 @@ def main() -> int:
              f"{top.get('doc_title', '')} / {top.get('section', '')}")
     ck.check("命中带可追溯来源（source_file + section）",
              all(h["source_file"] and h["section"] for h in sr["hits"]))
-    ck.check("响应注明『检索只召回、不生成回答』", "召回" in sr.get("note", ""))
+    # 旧版在每条检索结果底部拼一句固定提示，界面上纯属废话，已删（2026-10-19）。
+    # note 字段保留，只在真有事要提示时才用（比如向量库还没灌库）。
+    ck.check("检索结果不再带固定说明话术", not (sr.get("note") or ""), f"note={sr.get('note')!r}")
 
     r = client.get("/api/knowledge/search", params={"q": "燃气泄漏怎么处理", "doc_type": "emergency_plan"})
     ck.check("doc_type 过滤生效（只返回应急预案）",

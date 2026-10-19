@@ -192,10 +192,15 @@ def device_list(
     codes: list[str] | None = None,
     high_risk_only: bool = False,
     online_only: bool = False,
+    home_id: int | None = None,
     now: dt.datetime | None = None,
     offline_after_sec: float = DEFAULT_OFFLINE_AFTER_SEC,
 ) -> list[dict[str, Any]]:
-    """设备列表（按房间顺序排列）。当前值来自缓存，不查库。"""
+    """设备列表（按房间顺序排列）。当前值来自缓存，不查库。
+
+    `home_id` 为空表示不按套房过滤（给全屋统计用）；页面一律要传，
+    否则会把别的房子的设备列出来 —— 多套房下这是最容易被忽略的越权式串台。
+    """
     now = now or dt.datetime.now()
     room_order = {r.code: r.sort_no for r in catalog.rooms}
     devices = sorted(catalog.all(), key=lambda d: (room_order.get(d.room_code, 999), d.id))
@@ -203,6 +208,8 @@ def device_list(
 
     out: list[dict[str, Any]] = []
     for dev in devices:
+        if home_id is not None and dev.home_id != home_id:
+            continue
         if code_filter is not None and dev.code not in code_filter:
             continue
         if room_code and dev.room_code != room_code:
@@ -271,12 +278,17 @@ def device_capabilities(dev: DeviceInfo) -> dict[str, Any]:
     }
 
 
-def device_summary(catalog: DeviceCatalog) -> dict[str, int]:
-    """设备总览数字（房间卡片刻意不含这些，放在 /api/devices 的元信息里）。"""
-    devices = catalog.all()
+def device_summary(catalog: DeviceCatalog, home_id: int | None = None) -> dict[str, int]:
+    """设备总览数字（房间卡片刻意不含这些，放在 /api/devices 的元信息里）。
+
+    `home_id` 为空 = 全部套房；页面传当前套房，否则底部的"32/32 在线"会把
+    别人的设备也算进去。
+    """
+    devices = [d for d in catalog.all() if home_id is None or d.home_id == home_id]
+    rooms = [r for r in catalog.rooms if home_id is None or r.home_id == home_id]
     return {
         "devices": len(devices),
-        "rooms": len(catalog.rooms),
+        "rooms": len(rooms),
         "high_risk": sum(1 for d in devices if d.high_risk),
         "capabilities": sum(len(d.capabilities) for d in devices),
     }

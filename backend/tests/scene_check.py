@@ -304,6 +304,58 @@ def layer3(base_url: str) -> Checker:
                  all("确认" in s["reason"] or "高风险" in s["reason"]
                      for s in run2.get("pending_confirm", [])))
 
+        # ---------------------------------------------------------------- 多套房隔离
+        # 编排 / 保存 / 执行都必须只在本套房的设备里挑。
+        # 这里不写死设备码：从接口自己找两套「有设备的房」，再拿 B 房的一台设备
+        # 去 A 房编排 —— 这样以后增删套房、改设备清单，这条用例都不会失效。
+        homes = client.get("/api/homes").json()
+        homes = homes if isinstance(homes, list) else homes.get("items", [])
+        with_dev = []
+        for h in homes:
+            ds = client.get("/api/devices", params={"home_id": h["id"]}).json().get("items", [])
+            if ds:
+                with_dev.append((h["id"], ds))
+
+        if len(with_dev) < 2:
+            print("     （只有一套房有设备，跳过跨套房隔离检查）")
+        else:
+            (home_a, devs_a), (home_b, devs_b) = with_dev[0], with_dev[1]
+            foreign = next((x for x in devs_b if (x.get("writable_count") or 0) > 0), None)
+            if foreign is None:
+                print("     （B 房没有可写设备，跳过跨套房隔离检查）")
+            else:
+                caps = client.get(
+                    f"/api/devices/{foreign['id']}/capabilities"
+                ).json().get("capabilities", [])
+                cap = next((c for c in caps if c.get("writable")), None)
+                if cap is None:
+                    print("     （取不到 B 房的可写能力，跳过跨套房隔离检查）")
+                else:
+                    vt = cap.get("value_type")
+                    if vt == "bool":
+                        val = True
+                    elif vt == "enum":
+                        ev = cap.get("enum_values") or []
+                        val = (ev[0] if isinstance(ev, list) else str(ev).split(",")[0]) or ""
+                    else:
+                        val = cap.get("value_min") if cap.get("value_min") is not None else 0
+                    step = {"device_code": foreign["code"], "capability": cap["code"], "value": val}
+
+                    r = client.post("/api/scenes/plan", json={"actions": [step], "home_id": home_a})
+                    d = r.json()
+                    ck.check(f"★ 在 {home_a} 号房编排，看不到 {home_b} 号房的设备",
+                             d.get("action_count") == 0 and d.get("rejected_count") == 1,
+                             (d.get("rejected") or [{}])[0].get("reason", "")[:40])
+                    r = client.post("/api/scenes/plan", json={"actions": [step], "home_id": home_b})
+                    ck.check("★ 同一条动作回到本套房就能通过",
+                             r.json().get("action_count") == 1)
+
+                    r = client.post("/api/scenes", json={
+                        "home_id": home_a, "name": "跨套房隔离（验收脚本）", "actions": [step],
+                    })
+                    ck.check("★ 存进 A 房的场景里塞不进 B 房的设备", r.status_code == 422,
+                             f"HTTP {r.status_code}")
+
     except Exception as e:  # noqa: BLE001
         ck.check(f"API 层执行异常：{type(e).__name__}: {e}", False)
     finally:

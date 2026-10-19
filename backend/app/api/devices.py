@@ -64,6 +64,12 @@ def list_devices(
     device_type: str | None = Query(None, alias="type", description="按设备类型过滤，如 light / ac / temp_sensor"),
     high_risk_only: bool = Query(False, description="只看高风险设备（门锁 / 燃气阀 / 总闸）"),
     online_only: bool = Query(False, description="只看在线设备"),
+    home_id: int = Query(
+        1,
+        description="套房 id，缺省 1（演示家庭）。"
+        "⚠️ 缺省值刻意不是 None：旧大屏等既有调用方不传这个参数，"
+        "若默认返回全部套房，界面会突然多出别人家的设备。",
+    ),
     catalog: DeviceCatalog = Depends(get_catalog),
     cache: LatestValueCache = Depends(get_cache),
 ):
@@ -75,12 +81,13 @@ def list_devices(
         device_type=device_type,
         high_risk_only=high_risk_only,
         online_only=online_only,
+        home_id=home_id,
     )
     return DeviceListOut(
         meta=DeviceListMeta(
             total=len(catalog),
             filtered=len(items),
-            summary=device_summary(catalog),
+            summary=device_summary(catalog, home_id),
             generated_at=dt.datetime.now(),
         ),
         items=items,

@@ -45,6 +45,13 @@ class ScenePreviewIn(BaseModel):
     dry_run_execute: bool = Field(
         False, description="是否顺带演练一遍执行流程（不真下发、不写库）"
     )
+    home_id: int | None = Field(
+        None,
+        description=(
+            "在哪一套房里编排。给值就只在这套房的设备/房间里挑；"
+            "不传 = 不过滤（兼容旧调用方与回归脚本，多套房下**必须传**）"
+        ),
+    )
 
 
 class ScenePreviewOut(BaseModel):
@@ -69,6 +76,10 @@ class ScenePlanIn(BaseModel):
     actions: list[SceneStepIn]
     scene_name: str = ""
     description: str = ""
+    home_id: int | None = Field(
+        None,
+        description="在哪一套房里校验。不传 = 不过滤（多套房下必须传，否则会挑到别套房的设备）",
+    )
 
 
 class ScenePlanOut(BaseModel):
@@ -102,7 +113,31 @@ class SceneOut(BaseModel):
     action_count: int
     intent_key: str | None = None
     enabled: bool
+    favorite: bool = Field(
+        False, description="是否收藏（总览页只显示收藏的场景）。存在 definition_json 里，不改表"
+    )
+    actions: list[SceneStepIn] = Field(
+        default_factory=list, description="已保存的动作，编辑弹窗直接用它，省一次详情请求"
+    )
     created_at: dt.datetime | None = None
+
+
+class SceneUpdateIn(BaseModel):
+    """编辑场景。字段都可选：只传要改的。
+
+    ⚠️ `actions` **不传** = 动作保持不变；传**空数组** = 想清空动作 → 会被拒（422），
+    因为"没有动作的场景"执行时只会报错。
+    """
+
+    name: str | None = Field(None, min_length=1, max_length=64)
+    description: str | None = None
+    actions: list[SceneStepIn] | None = None
+    enabled: bool | None = None
+    favorite: bool | None = None
+
+
+class SceneFavoriteIn(BaseModel):
+    favorite: bool = True
 
 
 class SceneRunOut(BaseModel):

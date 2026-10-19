@@ -1,0 +1,188 @@
+# ============================================================================
+# 安防 / 照护 / 建议 的判定规则
+# ============================================================================
+#
+# ⚠️ 关于阈值的性质，先说清楚
+# ----------------------------
+# 下面所有数值都是【演示阈值】，不是生产告警阈值。规划书里有一条硬要求：
+# 「不得凭空设置生产告警阈值」。所以这里的分工是：
+#
+#   · 阈值放在配置文件里 → 可改、可审计，不藏在代码里；
+#   · 每条规则都必须带 criteria（判据文案）→ 告警响应里原样返回，
+#     让人能看出"这条告警是拿什么比出来的"，而不是一个没有依据的红灯；
+#   · 真实部署前必须按传感器的实际量程、家庭的真实作息重新校准。
+#
+# ⚠️ 关于"谁来执行"
+# ----------------
+# 本文件里的任何规则都**只产生告警与建议**，不产生设备指令。
+# 燃气阀、门锁、总闸的处置动作永远只能进"待确认项"，由人确认后才可能下发
+# （这条约束在 tools 层强制，不在提示词里）。
+# ============================================================================
+
+version: 1
+
+
+security:
+  # --------------------------------------------------------------------------
+  # 一、传感器事件 → 告警
+  # 事件来自 `sensor_events`（MQTT 的 `event` topic 落库）。
+  # 每个 event_code 一条规则；没在这里声明的 event_code 只入库、不升级成告警。
+  # --------------------------------------------------------------------------
+  event_rules:
+    gas_leak:
+      alarm_code: gas_leak_detected
+      level: critical
+      title: 厨房检测到燃气浓度超阈值
+      criteria: 燃气传感器上报 gas_leak 事件（模拟场景把浓度抬到 42 %LEL，演示阈值 25 %LEL）
+      action_hint: 先开窗通风并人工核实；如需关闭燃气阀，必须人工确认，系统不会自动执行
+      # 派生建议时用的打扰等级（见 suggestions 段的说明）
+      suggestion_level: urgent
+
+    smoke:
+      alarm_code: smoke_detected
+      level: critical
+      title: 厨房检测到烟雾
+      criteria: 烟感上报 smoke 事件，且同一时刻 PM2.5 显著抬升
+      action_hint: 先确认是否烹饪油烟误报；无法确认时联系物业，不要自行断电断气
+      suggestion_level: urgent
+
+    water_leak:
+      alarm_code: water_leak_detected
+      level: warning
+      title: 厨房检测到水浸
+      criteria: 水浸传感器上报 water_leak 事件
+      action_hint: 检查水管与洗碗机进水管；若在用水时段可能是误报，需人工核实
+      suggestion_level: important
+
+    intrusion:
+      alarm_code: entry_sensor_triggered
+      level: warning
+      title: 门窗传感器在非常规时段被触发
+      criteria: 门磁上报 intrusion 事件，且触发时刻不在日常出入时段内
+      # ⚠️ 措辞红线：单点门磁信号**不能**定性为"入侵"。
+      #    只报"传感器被触发"，是否异常由人判断。
+      action_hint: 先核实是否为住户操作；不要仅凭单点信号就升级为入侵处置
+      suggestion_level: important
+
+    care_no_activity:
+      alarm_code: care_inactivity_clue
+      level: warning
+      title: 照护对象长时间无活动迹象
+      criteria: 毫米波雷达连续 4 小时未检测到活动，且门磁无开合记录
+      # ⚠️ 措辞红线：这是"待确认线索"，不是健康结论。
+      action_hint: 按家庭预案联系成员核实；系统不会自动拨打紧急电话
+      suggestion_level: important
+
+  # --------------------------------------------------------------------------
+  # 二、设备状态 → 告警（读最新值判定，不要"翻历史猜"）
+  # --------------------------------------------------------------------------
+  state_rules:
+    # 高风险设备失联：门锁 / 燃气阀 / 总闸掉线本身就是风险（想用的时候不一定用得上）
+    high_risk_offline:
+      enabled: true
+      offline_minutes: 30
+      level: warning
+      title: 高风险设备失联
+      criteria: 门锁／燃气阀／电气总闸超过 30 分钟没有上报数据
+      action_hint: 先确认是网关问题还是设备断电；失联期间不要假设设备处于安全状态
+
+    # 感知盲区：安全类传感器掉线时，"没告警"不代表"没事"
+    safety_sensor_blind_spot:
+      enabled: true
+      offline_minutes: 45
+      device_types: [gas_sensor, smoke_sensor, water_leak_sensor]
+      level: warning
+      title: 安全传感器失联（感知盲区）
+      criteria: 燃气／烟感／水浸传感器超过 45 分钟没有上报数据
+      action_hint: 这段区间内的"无告警"不能当作"无异常"，需尽快恢复上线
+
+    # 门锁未锁 + 家中无人
+    door_unlocked_away:
+      enabled: true
+      away_minutes: 20
+      level: warning
+      title: 门锁处于未锁状态且家中无人
+      criteria: 门锁最新状态为 unlocked，且毫米波雷达在 20 分钟内没有检测到人
+      action_hint: 锁门属于高风险动作，只能生成待确认项，由人确认后执行
+
+
+care:
+  # --------------------------------------------------------------------------
+  # 三、照护观察：从"非摄像头"的感知数据里推导活动节律
+  # --------------------------------------------------------------------------
+  # ⚠️ 为什么要在配置里写"谁住哪间"
+  # ----------------------------------
+  # 库里**没有**成员↔设备的关系表（规划书 7.1 只有 user_roles 的数据范围，
+  # 没有照护绑定）。真实部署应由设置页让用户绑定；首期用这份配置顶上，
+  # 界面与 README 都必须标明它是「配置项」，而不是系统自动推断出来的。
+  subjects:
+    - member_nickname: 奶奶
+      room_code: second_bedroom
+      presence_device: second_bedroom_mmwave      # 毫米波雷达：presence / activity_level
+      door_device: second_bedroom_door_sensor     # 门磁：open
+      note: 房间内有毫米波雷达，是全家唯一具备"非摄像头在场感知"的房间
+
+  thresholds:
+    # 连续多久没有活动就算"长时间无活动"（与 security.event_rules.care_no_activity 呼应）
+    no_activity_hours: 4
+    # 先把原始读数聚合到这个粒度的桶再分析。
+    # 为什么必须聚合：生成器每 5 秒一条 presence，24 小时就是一万七千行/设备，
+    # 拉进内存再分析既慢又没意义 —— 活动节律的时间分辨率本来就是分钟级。
+    bucket_minutes: 5
+    # ⚠️ 判定"醒着"的活动量阈值。这个值不是拍脑袋来的：
+    #    生成器的 activity_level 三档是 睡觉 0~12 / 醒着静止 25~55 / 走动 60~100，
+    #    取 20 正好落在"睡觉"和"醒着"中间的空隙里。
+    #    不用这个阈值的话，人躺在床上（presence=1）会被算成"活动" ——
+    #    实测踩过：连续 7 小时"夜间活动"，其实是在睡觉。
+    active_activity_level: 20
+    # 在床静息持续多久才记一条"在床"（太短的翻身不值得记）
+    bed_minutes: 60
+    # 把相邻的同类桶合并成一段，间隔小于这个值算同一段
+    segment_gap_minutes: 20
+    # 一段活动至少要有多少个采样点才算数（防止 1 个点就报"起床"）
+    min_samples_per_segment: 2
+    # 夜间时段（此区间内的活动记为"夜间活动"，可能对应起夜）
+    night_start: "22:00"
+    night_end: "06:00"
+    # 起床时段
+    morning_start: "05:00"
+    morning_end: "09:30"
+    # 就寝时段
+    evening_start: "21:00"
+    evening_end: "01:00"
+  # 观察窗口：只看最近多少小时（避免一次扫全表）
+  window_hours: 24
+
+
+suggestions:
+  # --------------------------------------------------------------------------
+  # 四、主动建议
+  # --------------------------------------------------------------------------
+  # 打扰等级从高到低：urgent / important / normal / silent
+  # 与 `disturbance_rules` 表配合：若当前数据时间落在某等级的免打扰区间内，
+  # 该等级的建议会被**降级为 silent**，响应里给出 downgraded_from 说明原因。
+  # 这里配置的是"降级判定的参照时刻"用哪个时区/口径 —— 本项目单时区，本地时间。
+  #
+  # 各规则怎么派生建议：
+  #   · urgent / important 级建议由告警派生（见上面 event_rules 的 suggestion_level）
+  #   · normal 级建议由能耗与设备状态派生（见下面 rules）
+  rules:
+    peak_share_high:
+      enabled: true
+      level: normal
+      # 峰时段用电占比超过该值就建议把可延迟负载挪到谷段
+      peak_share_threshold: 0.45
+      window_hours: 24
+      content_tpl: 最近 {hours} 小时峰时段用电占比 {peak_pct}，建议把洗衣、烘干、热水器加热挪到谷时段（{valley_price} 元/kWh）
+      criteria_tpl: 峰段电量 {peak_kwh} kWh / 总电量 {total_kwh} kWh = {peak_pct}
+
+    always_on_light:
+      enabled: true
+      level: normal
+      # 灯亮着，但房间连续这么久没人 → 建议关灯
+      idle_minutes: 60
+      content_tpl: 「{device}」已经亮了 {minutes} 分钟，但{room}一直没有检测到人，可以关掉
+      criteria_tpl: 设备状态 power_on=true 持续 {minutes} 分钟；同房间毫米波雷达同期 presence=false
+
+  # 建议列表默认只显示这些状态（dismissed 的要显式查）
+  visible_status: [pending, shown, accepted]

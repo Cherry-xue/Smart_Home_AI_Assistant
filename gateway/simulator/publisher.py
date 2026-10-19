@@ -41,6 +41,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import queue
 import random
 import re
 import sys
@@ -248,6 +249,11 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--duration", type=float, default=0.0, help="模拟总分钟数，0=一直跑")
     ap.add_argument("--fault-rate", type=float, default=0.05, help="坏数据注入比例 0~1")
     ap.add_argument("--scenario", default="none", help="预置场景（见文件头）")
+    ap.add_argument(
+        "--scenario-repeat", action="store_true",
+        help="循环触发场景（约每 2.5~5.5 模拟小时一场，随机不重复）。"
+             "常驻生成器要它才有持续的异常事件，否则跑过某个时间点后就再也不会有事件",
+    )
     ap.add_argument("--start", default="auto",
                     help="模拟起始时间：auto（默认，从库里最新数据续跑）/ now / ISO 时间")
     ap.add_argument("--seed", type=int, default=20261015, help="随机种子（可复现）")
@@ -272,10 +278,14 @@ def main() -> int:
         print("❌ 数据库里没有启用的设备，请先执行 mysql/init/04_seed.sql")
         return 1
 
-    home_id = devices[0].home_id
+    # ⚠️ 多套房：每台设备按**自己的** home_id 发 topic。
+    # 早期版本用 devices[0].home_id 一刀切，一旦库里有第二套房，
+    # 它的设备数据会全部发到第一套房的 topic 下 —— 那种"数据看着有、但挂错房子"
+    # 的错最难查（后端不会报错，只是把 A 家的温度记到 B 家）。
+    home_ids = sorted({d.home_id for d in devices})
     rng = random.Random(args.seed)
     sim = HomeSimulator(devices, profiles, seed=args.seed)
-    runner = ScenarioRunner(args.scenario, rng)
+    runner = ScenarioRunner(args.scenario, rng, auto_repeat=args.scenario_repeat)
 
     # ---- 重启后恢复设备状态 ----
     # 模拟器状态只在内存里，不恢复的话"重启一次 = 之前开的灯全灭、空调温度跳回默认"。
@@ -302,7 +312,7 @@ def main() -> int:
     print("=" * 78)
     print("智能家居虚拟设备数据生成器")
     print("=" * 78)
-    print(f"  家庭 ID     : {home_id}")
+    print(f"  家庭        : {', '.join(map(str, home_ids))}（共 {len(home_ids)} 套，设备各按自己的 home 发布）")
     print(f"  设备数      : {len(devices)}（其中高风险 {sum(1 for d in devices if d.high_risk)} 台，只上报状态）")
     print(f"  模拟起点    : {start.isoformat()} {start_note}")
     print(f"  时间倍速    : {args.speed}x   （每 tick {args.tick:.0f} 模拟秒 = {sleep_sec:.3f} 真实秒）")
@@ -321,10 +331,17 @@ def main() -> int:
     topic_count: dict[str, int] = {}
     total_emitted = 0
 
+    #: 手动触发场景的请求队列（MQTT 回调线程写入，主循环消费）
+    #: 用队列而不是共享变量：paho 的回调在网络线程里跑，主循环在另一条线程上读，
+    #: 用 list 裸着传会有竞态（读的同时追加，行为不确定）。
+    scenario_requests: queue.Queue = queue.Queue()
+
     if not args.dry_run:
         import paho.mqtt.client as mqtt
 
-        cmd_topic = f"smart_home/{home_id}/room/+/device/+/cmd"
+        # 订阅全部套房的指令与场景主题（`+` 通配 home_id）
+        cmd_topic = "smart_home/+/room/+/device/+/cmd"
+        scenario_topic = "smart_home/+/system/scenario"
 
         client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
@@ -336,9 +353,23 @@ def main() -> int:
         def _on_connect(c, userdata, flags, rc, properties=None):  # noqa: ANN001
             # 连上（含断线重连）后都要重新订阅
             c.subscribe(cmd_topic, qos=1)
+            c.subscribe(scenario_topic, qos=1)
             print(f"  已订阅控制指令   : {cmd_topic}")
+            print(f"  已订阅场景触发   : {scenario_topic}")
 
         def _on_message(c, userdata, message):  # noqa: ANN001
+            # ⚠️ 订阅用了通配 `smart_home/+/system/scenario`，收到的 topic 是具体的
+            #    （比如 smart_home/1/system/scenario），所以这里必须用后缀判断，
+            #    不能用 == 比较订阅串。
+            if message.topic.endswith("/system/scenario"):
+                # 手动触发场景：只入队，真正生效在主循环里（避免在回调线程改模拟器状态）
+                try:
+                    req = json.loads(message.payload.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError) as e:
+                    print(f"  ⚠️ 场景触发报文解析失败：{e}", flush=True)
+                    return
+                scenario_requests.put(req if isinstance(req, dict) else {})
+                return
             handle_command(sim, c, message)
 
         client.on_connect = _on_connect
@@ -357,13 +388,71 @@ def main() -> int:
     t0 = time.perf_counter()
     next_progress = args.progress_every
 
+    #: 运行中重扫设备表的间隔（秒）。
+    #: ⚠️ 生成器是**常驻进程**，启动时只读一次设备表。用户在界面上「添加设备」之后，
+    #:    不重扫就永远不会为它产数据 —— 表现是"界面上在线，但一直没有读数"，
+    #:    很容易被误判成 bug。30 秒是"够快"和"别太频繁查库"之间的折中。
+    RESCAN_SEC = 30.0
+    next_rescan = time.perf_counter() + RESCAN_SEC
+    rescan_done = 0
+
     try:
         n = 0
         while True:
             now = start + dt.timedelta(minutes=n * tick_min)
             elapsed_min = n * tick_min
 
+            # ---- 周期性重扫设备表（支持"运行中在界面上增删设备"）----
+            if not args.dry_run and time.perf_counter() >= next_rescan:
+                next_rescan = time.perf_counter() + RESCAN_SEC
+                try:
+                    fresh = load_devices(env)
+                except Exception as e:  # noqa: BLE001
+                    # 查库失败不能让生成器停摆：沿用当前清单继续跑
+                    print(f"  ⚠️ 重扫设备表失败（{type(e).__name__}: {e}），沿用当前清单", flush=True)
+                else:
+                    added, updated, removed = sim.sync_from(fresh)
+                    rescan_done += 1
+                    if added or updated or removed:
+                        # ⚠️ flush=True 是必须的：常驻进程的 stdout 重定向到文件时是
+                        # **块缓冲**，不加 flush 这条日志要攒够 8KB 才落盘 ——
+                        # 实测踩过：simulator.log 一直是 0 字节，等于没有日志。
+                        print(
+                            f"  🔄 设备清单已同步："
+                            f"+{len(added)} 新增 {added}；"
+                            f"~{len(updated)} 更新 {updated}；"
+                            f"-{len(removed)} 停用 {removed}",
+                            flush=True,
+                        )
+                        devices = fresh
+                    elif rescan_done == 1:
+                        # 第一次重扫无论有没有变化都报一次 ——
+                        # 否则"重扫到底有没有在跑"只能靠猜（这次就是靠这条才定位到问题）
+                        print(
+                            f"  ✓ 设备表重扫正常（{len(fresh)} 台，本次无变化），此后每 "
+                            f"{RESCAN_SEC:.0f} 秒对一次账",
+                            flush=True,
+                        )
+                    # 存量设备的在线时长/tick 统计不受影响，只换清单
+
             samples = sim.step(now, tick_min)
+
+            # 处理手动触发请求（演示/联调用）：从"当前模拟时刻"开始跑一场
+            while True:
+                try:
+                    req = scenario_requests.get_nowait()
+                except queue.Empty:
+                    break
+                name = str(req.get("scenario") or "")
+                dur = req.get("duration_min")
+                if runner.trigger(name, elapsed_min, float(dur) if dur else None):
+                    print(
+                        f"  🎬 手动触发场景 {name}（第 {elapsed_min:.0f} 模拟分钟起，"
+                        f"{float(dur) if dur else '默认'}分钟）",
+                        flush=True,
+                    )
+                else:
+                    print(f"  ⚠️ 未知场景 {name!r}，可选项见 gateway/simulator/scenarios.py", flush=True)
 
             ov = runner.active(elapsed_min)
             samples = apply_overrides(samples, ov)
@@ -373,8 +462,9 @@ def main() -> int:
 
             for em in emissions:
                 s = em.sample
-                topic = build_topic(home_id, s.device.room_code, s.device.code, s.kind)
-                payload = build_payload(em, now, home_id)
+                # 用**这台设备自己的** home_id（多套房时不能统一用第一家）
+                topic = build_topic(s.device.home_id, s.device.room_code, s.device.code, s.kind)
+                payload = build_payload(em, now, s.device.home_id)
                 topic_count[topic] = topic_count.get(topic, 0) + 1
                 if args.dry_run:
                     if previewed < args.preview:
@@ -389,7 +479,7 @@ def main() -> int:
             ev_pair = build_event_message(ov, devices) if ov else None
             if ev_pair:
                 dev, ev = ev_pair
-                topic = build_topic(home_id, dev.room_code, dev.code, "event")
+                topic = build_topic(dev.home_id, dev.room_code, dev.code, "event")
                 payload = build_event_payload(dev, ev, now)
                 topic_count[topic] = topic_count.get(topic, 0) + 1
                 if args.dry_run:

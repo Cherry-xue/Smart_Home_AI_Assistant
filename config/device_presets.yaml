@@ -1,0 +1,157 @@
+# ============================================================================
+# 预设设备清单 —— 用户在界面上「添加设备」时**只能从这里选**，不能自定义
+# ============================================================================
+# 设计原则
+# --------
+# 1. **这是"能加什么"的唯一来源**，不是"已经有什么"。已登记的设备在
+#    `devices` + `device_capabilities` 两张表里，本文件只管新增时的模板。
+#
+# 2. ⚠️⚠️ **这里没有 `high_risk` 字段，这是故意的。**
+#    设备的"高风险"由后端按 `device_type` 推导（见
+#    `app/services/device_admin.py: HIGH_RISK_TYPES`），不由本文件或请求声明。
+#    如果让它可配置，用户加一个 `door_lock` 类型、把 high_risk 填 0，
+#    就把"门锁/燃气阀/总闸永不自动执行"这条红线绕过去了 ——
+#    而前面所有强制改写、待确认项，全都建立在这个字段可信的前提上。
+#
+# 3. 各项能力的取值范围/取值类型**照抄数据库现有档案**，所以预设产出的设备
+#    与原有设备完全同构，生成器、前端、校验链都不用改。
+#    改这里之前先跑 `tests/preset_check.py` 确认没和库里漂移。
+#
+# 4. 想加新预设：在下面加一条即可，**不需要改数据库、也不需要 DDL**
+#    （`devices.device_type` 是 varchar 不是 enum）。
+#    但新类型若要让生成器产出"像真的"数据，需要在
+#    `gateway/simulator/device_profiles.yaml` 的 `device_types:` 里补一段物理参数；
+#    不补也不会崩，只是那个设备只有静态/待机数据。
+# ============================================================================
+
+version: 1
+
+presets:
+  # ------------------------------------------------------------ 照明
+  - key: light
+    label: 灯具（可调光）
+    device_type: light
+    note: 开关 + 亮度。灯带、主灯、床头灯都归为这一类
+    capabilities:
+      - { code: power_on, display_name: 开关, value_type: bool, writable: true, risk_level: low }
+      - { code: brightness, display_name: 亮度, value_type: int, unit: "%", value_min: 0, value_max: 100, writable: true, risk_level: low }
+
+  # ------------------------------------------------------------ 遮阳
+  - key: curtain
+    label: 窗帘
+    device_type: curtain
+    note: 开合度。0 = 全关，100 = 全开
+    capabilities:
+      - { code: position, display_name: 开合度, value_type: int, unit: "%", value_min: 0, value_max: 100, writable: true, risk_level: low }
+
+  # ------------------------------------------------------------ 温控 / 家电
+  - key: ac
+    label: 空调（仅制冷）
+    device_type: ac
+    note: ⚠️ 物理模型只能制冷：设定温度高于室温时不会启动
+    capabilities:
+      - { code: power_on, display_name: 开关, value_type: bool, writable: true, risk_level: low }
+      - { code: target_temp, display_name: 目标温度, value_type: int, unit: "℃", value_min: 16, value_max: 30, writable: true, risk_level: low }
+      - { code: mode, display_name: 模式, value_type: enum, enum_values: "cool,heat,fan,dry,auto", writable: true, risk_level: low }
+      - { code: fan_speed, display_name: 风速, value_type: enum, enum_values: "auto,low,mid,high", writable: true, risk_level: low }
+
+  - key: tv
+    label: 电视
+    device_type: tv
+    capabilities:
+      - { code: power_on, display_name: 开关, value_type: bool, writable: true, risk_level: low }
+      - { code: volume, display_name: 音量, value_type: int, unit: "%", value_min: 0, value_max: 100, writable: true, risk_level: low }
+
+  - key: speaker
+    label: 智能音箱
+    device_type: speaker
+    capabilities:
+      - { code: power_on, display_name: 开关, value_type: bool, writable: true, risk_level: low }
+      - { code: volume, display_name: 音量, value_type: int, unit: "%", value_min: 0, value_max: 100, writable: true, risk_level: low }
+
+  - key: humidifier
+    label: 加湿器
+    device_type: humidifier
+    capabilities:
+      - { code: power_on, display_name: 开关, value_type: bool, writable: true, risk_level: low }
+      - { code: target_humidity, display_name: 目标湿度, value_type: int, unit: "%", value_min: 30, value_max: 80, writable: true, risk_level: low }
+
+  - key: water_heater
+    label: 热水器
+    device_type: water_heater
+    note: 风险等级为 medium：可远程开关，但会给电气总闸加负载
+    capabilities:
+      - { code: power_on, display_name: 开关, value_type: bool, writable: true, risk_level: medium }
+      - { code: target_temp, display_name: 目标温度, value_type: int, unit: "℃", value_min: 35, value_max: 75, writable: true, risk_level: medium }
+
+  # ------------------------------------------------------------ 传感器（只读）
+  - key: temp_sensor
+    label: 温湿度传感器
+    device_type: temp_sensor
+    note: 只读。给这台上报的值是生成器算出来的，不可能是"可控项"
+    capabilities:
+      - { code: temperature, display_name: 温度, value_type: float, unit: "℃", value_min: -10, value_max: 50, writable: false, risk_level: low }
+      - { code: humidity, display_name: 湿度, value_type: float, unit: "%", value_min: 0, value_max: 100, writable: false, risk_level: low }
+
+  - key: air_sensor
+    label: 空气质量传感器
+    device_type: air_sensor
+    capabilities:
+      - { code: pm25, display_name: PM2.5, value_type: float, unit: "μg/m³", value_min: 0, value_max: 500, writable: false, risk_level: low }
+      - { code: co2, display_name: 二氧化碳, value_type: float, unit: "ppm", value_min: 400, value_max: 5000, writable: false, risk_level: low }
+
+  - key: mmwave_radar
+    label: 毫米波雷达（人体活动）
+    device_type: mmwave_radar
+    note: 只读。用于"起夜 / 长时间无活动"这类关怀观察
+    capabilities:
+      - { code: presence, display_name: 有人, value_type: bool, writable: false, risk_level: low }
+      - { code: activity_level, display_name: 活动量, value_type: int, value_min: 0, value_max: 100, writable: false, risk_level: low }
+
+  - key: door_sensor
+    label: 门磁传感器
+    device_type: door_sensor
+    capabilities:
+      - { code: open, display_name: 门磁开合, value_type: bool, writable: false, risk_level: low }
+
+  - key: water_leak_sensor
+    label: 水浸传感器
+    device_type: water_leak_sensor
+    capabilities:
+      - { code: water_detected, display_name: 检测到水浸, value_type: bool, writable: false, risk_level: high }
+
+  - key: smoke_sensor
+    label: 烟雾报警器
+    device_type: smoke_sensor
+    capabilities:
+      - { code: smoke_detected, display_name: 检测到烟雾, value_type: bool, writable: false, risk_level: high }
+
+  - key: gas_sensor
+    label: 燃气探测器
+    device_type: gas_sensor
+    capabilities:
+      - { code: gas_concentration, display_name: 燃气浓度, value_type: float, unit: "%LEL", value_min: 0, value_max: 100, writable: false, risk_level: high }
+
+  # ------------------------------------------------------------ 高风险（永不自动执行）
+  # ⚠️ 这三个类型的 high_risk 由后端按 device_type 推导，不由文件声明。
+  #    它们在界面上可以添加，但任何指令都只会生成待确认项。
+  - key: door_lock
+    label: 智能门锁
+    device_type: door_lock
+    note: ⚠️ 高风险：指令只生成待确认项，永不自动执行
+    capabilities:
+      - { code: lock_state, display_name: 锁状态, value_type: enum, enum_values: "locked,unlocked", writable: true, risk_level: high }
+
+  - key: gas_valve
+    label: 燃气阀
+    device_type: gas_valve
+    note: ⚠️ 高风险：指令只生成待确认项，永不自动执行
+    capabilities:
+      - { code: valve_state, display_name: 阀门状态, value_type: enum, enum_values: "open,closed", writable: true, risk_level: high }
+
+  - key: main_breaker
+    label: 电气总闸
+    device_type: main_breaker
+    note: ⚠️ 高风险：指令只生成待确认项，永不自动执行
+    capabilities:
+      - { code: power_state, display_name: 总闸状态, value_type: enum, enum_values: "on,off", writable: true, risk_level: high }

@@ -1,0 +1,98 @@
+/* ============================================================================
+   页面切换动效
+   ============================================================================
+   工作方式
+   --------
+   `AppShell.vue` 用 <Transition name="page" mode="out-in"> 包住 RouterView，
+   过渡类（`page-enter-from` / `page-leave-to` …）会被加在**页面组件的根元素**上。
+   各页面只要在自己的子元素上标注两个钩子类，就会自动获得动效：
+
+     · `.page-fade`        —— 主显示区，做淡入淡出
+     · `.page-slide`       —— 下方菜单，离开时下沉到界面外、进入时从屏幕下方升起
+     · `.page-slide-right` —— 右侧栏（如知识库的「已入库文档 / 数据库状态」），
+                              离开时向右滑出、进入时从右侧滑入
+
+   为什么要拆成"钩子类"而不是直接写 `.stage` / `.bottom`：
+   过渡样式是全局的，页面组件是各自的 scoped 样式。用**语义化的钩子**
+   把两边解耦 —— 页面改布局（重命名 `.stage`）不会悄悄弄坏动画。
+
+   ⚠️ `mode="out-in"`：旧页面先完全离场，新页面才开始进场。
+   所以看到的是"下沉 → 升起"两段，而不是两页叠在一起抢位置。
+   ⚠️ 下方菜单能滑出画面，靠的是 `AppShell` 的 `.main { overflow: hidden }`，
+   别把它去掉。
+   ========================================================================== */
+
+/* ---------------- 主显示区：淡入淡出 ---------------- */
+/* ⚠️ 两种挂法都要支持：
+   ① 页面把 `.page-fade` 挂在**根节点**上（设备 / 照护 / 能耗页就是这样）——
+      此时过渡类也加在根节点，必须用 `.page-enter-from.page-fade`（无空格）才匹配；
+   ② 页面把它挂在根节点里的**子区块**上 —— 用后代选择器匹配。
+   以前只写了 ②，结果 ① 这类页面**完全没有动画**（一直是瞬间切换）。 */
+.page-enter-active.page-fade {
+  transition: opacity 300ms var(--ease) 60ms;
+}
+.page-leave-active.page-fade {
+  transition: opacity 200ms var(--ease);
+}
+.page-enter-from.page-fade,
+.page-leave-to.page-fade {
+  opacity: 0;
+}
+
+.page-enter-active .page-fade {
+  /* 进入稍慢一点，并让位给下方菜单的升起 */
+  transition: opacity 300ms var(--ease) 60ms;
+}
+.page-leave-active .page-fade {
+  /* 离开要快，不然切页感觉拖沓 */
+  transition: opacity 200ms var(--ease);
+}
+.page-enter-from .page-fade,
+.page-leave-to .page-fade {
+  opacity: 0;
+}
+
+/* ---------------- 下方菜单：下沉 / 升起 ---------------- */
+/* translateY 用 `100% + 16px`：100% 只是移出自身高度，
+   还要再加上页面容器的 padding 才真正离开可视区。 */
+.page-enter-active .page-slide {
+  transition: transform 340ms var(--ease) 40ms;
+}
+.page-leave-active .page-slide {
+  transition: transform 260ms var(--ease);
+}
+.page-enter-from .page-slide,
+.page-leave-to .page-slide {
+  transform: translateY(calc(100% + 16px));
+}
+
+/* ---------------- 右侧栏：右移 / 滑入 ---------------- */
+/* 与上方 `.page-slide` 同一套思路，只把 Y 换成 X。
+   ⚠️ 时长别超过 AppShell 里写死的 enter 400ms / leave 280ms ——
+   Vue 到点就摘过渡类，超出的那截动画会被直接截断（表现为"滑一半突然跳回去"）。
+   这里 320+60=380ms，留了 20ms 余量。 */
+.page-enter-active .page-slide-right {
+  transition: transform 320ms var(--ease) 60ms;
+}
+.page-leave-active .page-slide-right {
+  transition: transform 240ms var(--ease);
+}
+.page-enter-from .page-slide-right,
+.page-leave-to .page-slide-right {
+  transform: translateX(calc(100% + 16px));
+}
+
+/* ---------------- 无障碍：尊重"减少动态效果" ---------------- */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter-active.page-fade,
+  .page-leave-active.page-fade,
+  .page-enter-active .page-fade,
+  .page-leave-active .page-fade,
+  .page-enter-active .page-slide,
+  .page-leave-active .page-slide,
+  .page-enter-active .page-slide-right,
+  .page-leave-active .page-slide-right {
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+}

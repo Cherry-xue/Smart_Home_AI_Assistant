@@ -1,0 +1,96 @@
+/* 基础重置与排版。视觉细节一律走 tokens.css 的变量。 */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--c-bg);
+  color: var(--c-ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 细线风格下的通用小元素 ---- */
+
+.tag {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: var(--fs-tiny);
+  line-height: 1.5;
+  border: 1px solid var(--c-line);
+  color: var(--c-ink-soft);
+  white-space: nowrap;
+}
+
+.tag--accent {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+.tag--danger {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+.tag--warn {
+  border-color: var(--c-warn);
+  color: var(--c-warn);
+}
+.tag--good {
+  border-color: var(--c-good);
+  color: var(--c-good);
+}
+.tag--high-risk {
+  border-color: var(--c-high-risk);
+  color: var(--c-high-risk);
+}
+
+.muted {
+  color: var(--c-ink-muted);
+}
+.soft {
+  color: var(--c-ink-soft);
+}
+
+.empty {
+  color: var(--c-ink-muted);
+  font-size: var(--fs-small);
+}
+
+/* 滚动条：细线风格，不要系统默认的粗灰条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d8dade;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

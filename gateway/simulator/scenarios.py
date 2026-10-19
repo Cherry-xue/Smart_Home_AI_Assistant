@@ -117,28 +117,113 @@ SCENARIOS: dict[str, ScenarioStep] = {
 
 
 class ScenarioRunner:
-    """按模拟时间驱动场景；一次只跑一个场景（可用 --scenario random 让它随机挑）。"""
+    """按模拟时间驱动场景。
 
-    def __init__(self, name: str, rng: random.Random, auto_repeat: bool = False):
+    两种模式
+    --------
+    - **单次**（默认）：只跑一个场景，在它自己声明的 `at_min` 触发一次。
+      适合复现/调试（`--scenario gas_leak`）。
+    - **循环**（`auto_repeat=True`）：按一张"随机时间表"反复触发，
+      两次之间留 `gap` 分钟的空窗。
+
+    为什么需要循环模式
+    ------------------
+    安防/照护两条业务线**只在异常发生时才有数据**。单次模式下，常驻生成器
+    跑过那个时间点之后就再也不会有事件了 —— 库里 `sensor_events` 只有启动初期
+    那几条，告警页看上去永远空着。这不是"逻辑坏了"，是**数据源不会再来**。
+
+    ⚠️ 用"发牌"而不是"每次独立随机"来选场景：独立随机会连续抽到同一个场景
+    （燃气泄漏一晚上演三遍），发牌保证一轮之内不重复。
+    """
+
+    #: 循环模式下首场异常最早/最晚在模拟开始后多少分钟出现
+    FIRST_AT = (10.0, 40.0)
+    #: 之后每两场之间的空窗（模拟分钟）
+    GAP = (150.0, 330.0)
+
+    def __init__(
+        self,
+        name: str,
+        rng: random.Random,
+        auto_repeat: bool = False,
+    ):
         self.rng = rng
         self.name = name
+        self.auto_repeat = auto_repeat
+
         if name == "none":
-            self.steps: list[ScenarioStep] = []
+            self._pool: list[str] = []
         elif name == "random":
-            self.steps = [SCENARIOS[self.rng.choice(list(SCENARIOS))]]
-            self.auto_repeat = auto_repeat
+            self._pool = sorted(SCENARIOS)          # 排序后再洗牌，保证同 seed 可复现
         else:
             if name not in SCENARIOS:
                 raise SystemExit(f"未知场景 {name!r}，可选：none / random / {', '.join(SCENARIOS)}")
-            self.steps = [SCENARIOS[name]]
-            self.auto_repeat = auto_repeat
-        self._fired: set[str] = set()
+            self._pool = [name]
+
+        self._deck: list[str] = []
+        #: 已排定的场次：(序号, 具体时刻的 step)
+        self._occurrences: list[tuple[int, ScenarioStep]] = []
+        self._occ_seq = 0
+        self._fired: set[int] = set()
+
+        if not self._pool:
+            self._next_at = float("inf")
+        elif auto_repeat:
+            self._next_at = self.rng.uniform(*self.FIRST_AT)
+        else:
+            # 单次模式：沿用场景自己声明的 at_min，行为与改造前完全一致
+            self._schedule_at(SCENARIOS[self._pool[0]].at_min)
+            self._next_at = float("inf")
+
+    # ------------------------------------------------------------------ 内部
+    def _draw(self) -> str:
+        """发牌：洗好的一副牌发完再洗，保证一轮内不重复。"""
+        if not self._deck:
+            self._deck = list(self._pool)
+            self.rng.shuffle(self._deck)
+        return self._deck.pop()
+
+    def _schedule_at(self, at_min: float) -> None:
+        self._occ_seq += 1
+        self._occurrences.append((self._occ_seq, dataclasses.replace(SCENARIOS[self._draw()], at_min=at_min)))
+        # 只保留最近两场，避免长跑时列表无限增长
+        if len(self._occurrences) > 2:
+            self._occurrences.pop(0)
+
+    # ------------------------------------------------------------------ 对外
+    def trigger(self, name: str, at_min: float, duration_min: float | None = None) -> bool:
+        """**手动**触发一场场景（演示/联调用）。
+
+        为什么要它：常驻生成器追上真实时间后会降到 1 倍速，而自动场景的间隔是
+        2.5~5.5 小时 —— 现场演示不可能等这么久。所以留一个"现在就来一次"的入口，
+        通过 MQTT 控制主题触发（见 `scripts/trigger_scenario.py`）。
+
+        ⚠️ 手动触发同样**只制造观测**，不产生任何设备指令。
+        """
+        if name not in SCENARIOS:
+            return False
+        step = SCENARIOS[name]
+        if duration_min:
+            step = dataclasses.replace(step, duration_min=float(duration_min))
+        self._occ_seq += 1
+        self._occurrences.append((self._occ_seq, dataclasses.replace(step, at_min=at_min)))
+        if len(self._occurrences) > 3:
+            self._occurrences.pop(0)
+        return True
 
     def active(self, elapsed_min: float) -> ActiveOverride | None:
-        for step in self.steps:
+        if not self._pool and not self._occurrences:
+            return None
+
+        # 到点了就排下一场（模拟时间只增不减，所以这里不会重复排同一场）
+        if self.auto_repeat and elapsed_min >= self._next_at:
+            self._schedule_at(self._next_at)
+            self._next_at = self._next_at + self.rng.uniform(*self.GAP)
+
+        for occ_id, step in reversed(self._occurrences):
             if step.at_min <= elapsed_min < step.at_min + step.duration_min:
-                first = step.label not in self._fired
-                self._fired.add(step.label)
+                first = occ_id not in self._fired
+                self._fired.add(occ_id)
                 return ActiveOverride(
                     overrides=step.overrides,
                     event=step.event if first else None,   # 事件只在进入窗口时发一次
@@ -147,10 +232,16 @@ class ScenarioRunner:
 
     @property
     def steps_summary(self) -> str:
-        if not self.steps:
+        if not self._pool:
             return "无场景（只产正常数据）"
+        if self.auto_repeat:
+            return (
+                f"循环模式：从第 {self.FIRST_AT[0]:.0f}~{self.FIRST_AT[1]:.0f} 分钟起，"
+                f"约每 {self.GAP[0]:.0f}~{self.GAP[1]:.0f} 分钟一场；"
+                f"候选 {len(self._pool)} 个场景（发牌不重复）：{', '.join(self._pool)}"
+            )
         return "; ".join(
-            f"{s.label} @第{int(s.at_min)}分钟起 {int(s.duration_min)}分钟" for s in self.steps
+            f"{s.label} @第{int(s.at_min)}分钟起 {int(s.duration_min)}分钟" for _, s in self._occurrences
         )
 
 

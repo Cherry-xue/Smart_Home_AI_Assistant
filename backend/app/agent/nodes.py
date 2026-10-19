@@ -159,9 +159,14 @@ def build_plan_node(ctx: Any) -> Callable[[AgentState], Coroutine[Any, Any, dict
             for a in actions
         ]
 
+        # 按当前套房收窄设备目录：对话里说"把灯关了"，必须是**这一套房**的灯。
+        # ⚠️ 每次进入节点都现算：ctx.catalog 会被 refresh() 就地更新，而图是按进程
+        #    缓存的，提前算好就会永远停在旧快照上（新加的设备永远进不来）。
+        home_catalog = catalog.for_home(state.get("home_id"))
+
         try:
             plan: ScenePlan = scene_planner.plan_scene(
-                catalog,
+                home_catalog,
                 candidates,
                 scene_name=(state.get("question") or "")[:60],
             )
@@ -326,6 +331,8 @@ def _persist_pending(ctx: Any, plan_dict: dict[str, Any], thread_id: str | None)
     from app.services.scenes import executor as scene_executor
 
     catalog: DeviceCatalog = ctx.catalog
+    # 待确认指令也只能挂在本套房的设备上（for_home(None) 会原样返回，等于不过滤）
+    catalog = catalog.for_home(getattr(ctx, "home_id", None))
     plan = _rebuild_plan(plan_dict)
     high_risk = [a for a in plan.actions if a.high_risk_device]
     if not high_risk:
@@ -456,6 +463,9 @@ def build_execute_node(ctx: Any, *, only_high_risk: bool):
 
     async def execute_node(state: AgentState) -> dict:
         started = time.perf_counter()
+        # 执行路径同样只认本套房的设备。现算而不缓存的原因同 plan_node：
+        # ctx.catalog 会被 refresh() 就地更新，图却是按进程缓存的。
+        home_catalog = catalog.for_home(home_id)
         plan_dict = state.get("plan")
 
         if not plan_dict or not plan_dict.get("actions"):
@@ -491,7 +501,7 @@ def build_execute_node(ctx: Any, *, only_high_risk: bool):
             db = _session_factory()()
             try:
                 result = scene_executor.execute_plan(
-                    sub_plan, catalog, db=db, home_id=home_id,
+                    sub_plan, home_catalog, db=db, home_id=home_id,
                     issued_by="agent", dry_run=False,
                     # 带上会话标识：手机端的"待确认列表"要靠它反查是哪个会话挂起的
                     extra_params={"source": "agent", "thread_id": state.get("thread_id")},

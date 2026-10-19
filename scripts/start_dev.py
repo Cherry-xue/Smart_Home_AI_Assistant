@@ -67,6 +67,17 @@ def wait_port(port: int, seconds: float = 30.0) -> bool:
     return False
 
 
+def SCENARIO_REPEAT_FLAG(args: argparse.Namespace) -> list[str]:
+    """按参数决定要不要给生成器加 `--scenario-repeat`。
+
+    关掉场景（--scenario none）时不该再传循环开关 —— 那会让人以为"开了循环"，
+    实际上一个场景都没有，属于会误导阅读日志的人的配置。
+    """
+    if args.scenario == "none" or args.no_scenario_repeat:
+        return []
+    return ["--scenario-repeat"]
+
+
 def start(name: str, args: list[str], cwd: Path, log_name: str) -> subprocess.Popen | None:
     log_path = ROOT / log_name
     fp = open(log_path, "w", encoding="utf-8", errors="replace")  # noqa: SIM115
@@ -81,6 +92,25 @@ def start(name: str, args: list[str], cwd: Path, log_name: str) -> subprocess.Po
     return proc
 
 
+def _ingest_readings(timeout: float = 10.0) -> int | None:
+    """读 `/api/health` 里的 `ingest.readings`（后端进程内累计计数）。
+
+    用途：核对"补历史"到底有没有落库。取不到就返回 None（不抛异常，
+    因为核对失败本身不该让启动流程挂掉）。
+    """
+    import json
+    import urllib.request
+
+    # ⚠️ 本机可能设了 HTTP_PROXY，会把 127.0.0.1 也走代理 → 取不到。显式禁掉。
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open("http://127.0.0.1:8000/api/health", timeout=timeout) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        return int((data.get("ingest") or {}).get("readings"))
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="一键启动：Broker + 后端 + 虚拟设备运行时")
     ap.add_argument("--speed", type=float, default=60.0, help="常驻运行的时间倍速（1=真实时间）")
@@ -88,6 +118,16 @@ def main() -> int:
                     help="模拟时间最多领先真实时间多少分钟（防止界面出现未来时间）")
     ap.add_argument("--backfill", action="store_true", help="先补 24 小时历史数据再常驻")
     ap.add_argument("--backfill-minutes", type=float, default=1440.0, help="补多少分钟的历史")
+    ap.add_argument(
+        "--scenario", default="random",
+        help="异常场景：random（默认，循环触发）/ none（只产正常数据）/ 具体场景名。"
+             "默认开是有原因的：安防与照护两条业务线只在异常发生时有数据，"
+             "关掉之后告警页会一直是空的",
+    )
+    ap.add_argument(
+        "--no-scenario-repeat", action="store_true",
+        help="只触发一场异常就停（调试单个场景时用）",
+    )
     args = ap.parse_args()
 
     procs: list[subprocess.Popen] = []
@@ -112,18 +152,7 @@ def main() -> int:
             return 1
         print("  ✓ MQTT Broker 就绪（1883）")
 
-    # ---- 2. 补历史（可选）----
-    if args.backfill:
-        minutes = int(args.backfill_minutes)
-        print(f"\n  补 {minutes} 分钟历史数据（600 倍速，约需几分钟）…")
-        subprocess.run(
-            [PYTHON, "-m", "gateway.simulator.publisher",
-             "--start", f"back:{minutes}", "--duration", str(minutes),
-             "--speed", "600", "--progress-every", "480"],
-            cwd=str(ROOT), check=False,
-        )
-
-    # ---- 3. 后端 ----
+    # ---- 2. 后端 ----
     if port_open("127.0.0.1", 8000):
         print("  ✓ 后端已在运行（8000）")
     else:
@@ -136,6 +165,43 @@ def main() -> int:
             return 1
         print("  ✓ 后端就绪（8000）  → http://127.0.0.1:8000/docs")
 
+    # ---- 3. 补历史（可选）----
+    # ⚠️⚠️ 必须排在后端**之后**。这不是风格问题，是数据会不会丢的问题：
+    #     生成器（gateway/）只发 MQTT，**整个目录里没有任何写库代码**；
+    #     唯一的入库通道是后端的订阅者（app/mqtt/ingest.py）。
+    #     后端没起就补历史 = 消息发进空 MQTT，无人接收，全部丢失。
+    #
+    #     这个坑很阴：生成器**会正常退出**，还打印"累计发布 N 条"，
+    #     光看日志像是成功了，只有去数库里的行数才发现一条都没进去。
+    #     2026-10-16 实测：后端未起时补 3 分钟（1155 条），
+    #     device_readings 行数 925750 前后完全不变。
+    #
+    #     下面用 /api/health 的 ingest.readings 做前后核对，
+    #     把"悄悄丢数据"变成"当场报错"。
+    if args.backfill:
+        minutes = int(args.backfill_minutes)
+        before = _ingest_readings()
+        print(f"\n  补 {minutes} 分钟历史数据（600 倍速，约需几分钟）…")
+        subprocess.run(
+            [PYTHON, "-m", "gateway.simulator.publisher",
+             "--start", f"back:{minutes}", "--duration", str(minutes),
+             "--speed", "600", "--progress-every", "480",
+             # 历史里也补上异常事件：告警时间轴要有"过去发生过什么"才讲得通
+             "--scenario", args.scenario, *SCENARIO_REPEAT_FLAG(args)],
+            cwd=str(ROOT), check=False,
+        )
+        after = _ingest_readings()
+        if before is not None and after is not None:
+            delta = after - before
+            if delta > 0:
+                print(f"  ✓ 补历史已落库：readings +{delta:,}（{before:,} → {after:,}）")
+            else:
+                print(f"  ❌ 补历史**没有落库**：readings {before:,} → {after:,}，增量为 0")
+                print("     查 api.log：MQTT 是否 connected、订阅者有没有起来。")
+                return 1
+        else:
+            print("  ⚠️ 无法核对补历史结果（/api/health 取不到 ingest.readings）")
+
     # ---- 4. 虚拟设备运行时（常驻）----
     # ⚠️ 这一步最关键：没有它，下发指令没人接收，设备状态永远不变。
     print()
@@ -143,7 +209,8 @@ def main() -> int:
         "虚拟设备运行时",
         [PYTHON, "-m", "gateway.simulator.publisher",
          "--start", "auto", "--speed", str(args.speed),
-         "--duration", "0", "--max-ahead", str(args.max_ahead)],
+         "--duration", "0", "--max-ahead", str(args.max_ahead),
+         "--scenario", args.scenario, *SCENARIO_REPEAT_FLAG(args)],
         ROOT, "simulator.log",
     )
     if p:

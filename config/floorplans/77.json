@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "home_id": 77,
+  "updated_at": "2026-10-19T14:12:01",
+  "view_box": {
+    "x": 0.0,
+    "y": 0.0,
+    "w": 2358.0,
+    "h": 1668.0
+  },
+  "areas": [
+    {
+      "code": "room_1",
+      "name": "阳台",
+      "type": "阳台",
+      "x": 358.0,
+      "y": 314.0,
+      "w": 223.0,
+      "h": 538.0,
+      "is_circulation": false
+    }
+  ],
+  "background": {
+    "width": 2358,
+    "height": 1668,
+    "opacity": 0.9
+  }
+}

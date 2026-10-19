@@ -33,6 +33,11 @@ def energy_summary_endpoint(
         None, alias="from", description="起始时间（ISO 8601）。缺省 = 数据最新时间往前 24 小时"
     ),
     to_: dt.datetime | None = Query(None, alias="to", description="结束时间。缺省 = 数据最新时间"),
+    home_id: int = Query(
+        1,
+        description="套房 id，缺省 1。⚠️ 缺省不为 None 是为了让旧调用方（不传参数）"
+        "仍然只看到 1 号房的电费，而不是两套房加在一起",
+    ),
     db: Session = Depends(get_db),
     catalog: DeviceCatalog = Depends(get_catalog),
     cache: LatestValueCache = Depends(get_cache),
@@ -40,4 +45,6 @@ def energy_summary_endpoint(
 ):
     # 与 /readings 一致：缺省窗口以数据最新时间为锚点（模拟数据的时间轴可能不在"现在"）
     window = resolve_window(from_, to_, default_hours=24.0, anchor=data_anchor(catalog, cache))
-    return energy_summary(db, catalog, tariff, from_dt=window[0], to_dt=window[1])
+    return energy_summary(
+        db, catalog, tariff, from_dt=window[0], to_dt=window[1], home_id=home_id
+    )

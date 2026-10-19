@@ -59,7 +59,11 @@ def _in_any_window(t: dt.time, windows: list[str]) -> bool:
 
 class HomeSimulator:
     def __init__(self, devices: list[DeviceSpec], profiles: dict, seed: int = 20261015):
-        self.devices = devices
+        # ⚠️ 复制一份而不是直接持有：`_attach()` 会往这个列表里 append，
+        #    直接引用会把**调用方传进来的列表**也改掉。
+        #    隔离测试踩到过：传 `devs + [新设备]` 进来之后，`devs` 自己也多了一台，
+        #    于是后续"移除"永远判不出来（因为对方列表里已经有它了）。
+        self.devices = list(devices)
         self.p = profiles
         self.rng = random.Random(seed)
 
@@ -70,6 +74,11 @@ class HomeSimulator:
             room: float(self.p["indoor"]["humidity_base"]) + self.rng.uniform(-4, 4)
             for room in self.p["rooms"]
         }
+        # ⚠️ 设备所在的房间不一定在 device_profiles.yaml 的 `rooms:` 里 ——
+        #    用户在界面上自建的房间是 `room_1`/`room_2` 这种，没有物理档案。
+        #    不补初值的话 `_metrics()` 直接索引 `self.room_temp[code]` 会 KeyError，
+        #    实测表现是**整个生成器崩掉**（新建套房加设备后所有套房一起断数据）。
+        self._ensure_room_climate([d.room_code for d in self.devices])
         self.water_temp = 42.0           # 热水器水箱温度
         self.seq = 0
         self._occ_cache: dict[tuple, bool] = {}
@@ -85,7 +94,7 @@ class HomeSimulator:
         # 与作息/物理模型完全脱节 —— 那样模拟器就不再是"在推演一个家"，而是"在回放一条指令"。
         self.manual_overrides: dict[str, dict[str, object]] = {}
         self.override_until: dict[str, dt.datetime] = {}
-        self.by_code: dict[str, DeviceSpec] = {d.code: d for d in devices}
+        self.by_code: dict[str, DeviceSpec] = {d.code: d for d in self.devices}
         #: 最近一次的模拟时间（供 MQTT 回调线程读取，见 step()）
         self.last_now: dt.datetime | None = None
 
@@ -95,6 +104,107 @@ class HomeSimulator:
         self.mmwave = next((d for d in devices if d.device_type == "mmwave_radar"), None)
         self.door_sensor = next((d for d in devices if d.device_type == "door_sensor"), None)
         self.door_lock = next((d for d in devices if d.device_type == "door_lock"), None)
+
+    # ---------------------------------------------------------------- 运行时增删设备
+    # 为什么需要：生成器是**常驻进程**，启动时只读一次设备表。用户在界面上
+    # 「添加设备」之后，不重新同步就永远不会为它产数据
+    # （表现是"界面上在线，但一直没有读数"，很容易被误判成 bug）。
+    # 下面这几个方法由 `sync_devices()` 调用，publisher 主循环会周期性触发。
+
+    def upsert_device(self, spec: DeviceSpec) -> str:
+        """加入或更新一台设备。返回 'added' / 'updated' / 'same'。
+
+        ⚠️ 更新时**保留手动覆盖**（`manual_overrides`）：
+        用户刚把灯打开，这时候改了一下能力档案，不应该把灯给他关回去。
+        """
+        cur = self.by_code.get(spec.code)
+        if cur is None:
+            self._attach(spec)
+            return "added"
+
+        if cur == spec:  # DeviceSpec 是 frozen dataclass，逐字段比较
+            return "same"
+
+        # 就地替换（device_code 不变，所以覆盖、房间温度这些都还在）
+        self.devices = [spec if d.code == spec.code else d for d in self.devices]
+        self.by_code[spec.code] = spec
+        self._rebind_specials(previous=cur, current=spec)
+        return "updated"
+
+    def remove_device(self, code: str) -> bool:
+        """移除一台设备（对应后端把 `enabled` 置 0）。"""
+        spec = self.by_code.pop(code, None)
+        if spec is None:
+            return False
+        self.devices = [d for d in self.devices if d.code != code]
+        if self.ac_by_room.get(spec.room_code) is spec:
+            self.ac_by_room.pop(spec.room_code, None)
+        for attr in ("heater", "mmwave", "door_sensor", "door_lock"):
+            if getattr(self, attr) is spec:
+                setattr(self, attr, None)
+        self.manual_overrides.pop(code, None)
+        self.override_until.pop(code, None)
+        return True
+
+    def _ensure_room_climate(self, room_codes) -> None:
+        """给还没登记的房间补温湿度初值（用户在界面上自建的房间没有物理档案）。"""
+        base_h = float(self.p.get("indoor", {}).get("humidity_base", 55.0))
+        for code in room_codes:
+            if code in self.room_temp:
+                continue
+            self.room_temp[code] = 22.0 + self.rng.uniform(-0.8, 0.8)
+            self.room_humidity[code] = base_h + self.rng.uniform(-4, 4)
+
+    def _attach(self, spec: DeviceSpec) -> None:
+        """把一个全新的设备接进模拟器（含它所在房间的温湿度初值）。"""
+        self.devices.append(spec)
+        self.by_code[spec.code] = spec
+        self._ensure_room_climate([spec.room_code])
+        if spec.device_type == "ac" and spec.room_code not in self.ac_by_room:
+            self.ac_by_room[spec.room_code] = spec
+        self._rebind_specials(previous=None, current=spec)
+
+    def _rebind_specials(self, previous: DeviceSpec | None, current: DeviceSpec) -> None:
+        """维护那几个"全屋唯一"的特例引用（热水器 / 毫米波 / 门磁 / 门锁）。
+
+        这些在 `__init__` 里是用 `next(...)` 找的，运行时增删必须同步，
+        否则会出现"新加的热水器不加热"或者"删掉的门锁还被人引用"。
+        """
+        pairs = (
+            ("heater", "water_heater"),
+            ("mmwave", "mmwave_radar"),
+            ("door_sensor", "door_sensor"),
+            ("door_lock", "door_lock"),
+        )
+        for attr, dtype in pairs:
+            if current.device_type == dtype and getattr(self, attr) is None:
+                setattr(self, attr, current)
+            if previous is not None and getattr(self, attr) is previous and current.device_type != dtype:
+                setattr(self, attr, None)
+
+    def sync_from(self, fresh: list[DeviceSpec]) -> tuple[list[str], list[str], list[str]]:
+        """把设备清单同步成 `fresh`（数据库的最新快照）。
+
+        返回 `(新增, 更新, 移除)` 三组 code，供调用方打日志 ——
+        静默同步会让人以为"加了设备没反应"，有输出才好排查。
+        """
+        fresh_by_code = {d.code: d for d in fresh}
+
+        removed: list[str] = []
+        for code in list(self.by_code):
+            if code not in fresh_by_code and self.remove_device(code):
+                removed.append(code)
+
+        added: list[str] = []
+        updated: list[str] = []
+        for spec in fresh:
+            action = self.upsert_device(spec)
+            if action == "added":
+                added.append(spec.code)
+            elif action == "updated":
+                updated.append(spec.code)
+
+        return added, updated, removed
 
     # ---------------------------------------------------------------- 室外
     def outdoor_temp(self, now: dt.datetime) -> float:
@@ -254,8 +364,10 @@ class HomeSimulator:
         温度慢慢爬到 26.3℃ → 压缩机启动 → 迅速回到 26.0℃ → 停机 → 再爬……
         这正是真实空调的功率曲线。
         """
-        for room, cfg in self.p["rooms"].items():
-            tau = float(cfg["thermal_tau_min"])
+        for room in self.room_temp:
+            # 自建房间没有 thermal_tau_min：用 30 分钟（和卧室同量级）
+            cfg = (self.p["rooms"].get(room) or {})
+            tau = float(cfg.get("thermal_tau_min", 30.0))
             natural = self.natural_indoor(room, now)
             cur = self.room_temp[room]
 
@@ -276,7 +388,7 @@ class HomeSimulator:
     def _step_humidity(self, now: dt.datetime, dt_min: float) -> None:
         indoor = self.p["indoor"]
         h = now.hour + now.minute / 60.0
-        for room in self.p["rooms"]:
+        for room in self.room_humidity:
             base = indoor["humidity_base"] + indoor["humidity_amplitude"] * math.sin(
                 2 * math.pi * (h - 9) / 24.0
             )

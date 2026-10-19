@@ -1,0 +1,88 @@
+/* ============================================================================
+   设计令牌 —— ⚠️ 全项目**只有这个文件**允许写死颜色/尺寸。
+   想换配色、换圆角、换密度，改这里就够了，不用碰任何组件。
+   ============================================================================
+   当前基调：白底、细线、极简、近单色（只在"选中/告警"处出现彩色）。
+   依据是设计稿的画法：白底 + 1px 细线 + 黑色墙体 + 无圆角。
+   ========================================================================== */
+
+:root {
+  /* ---------------- 颜色：底色与文字 ---------------- */
+  --c-bg: #ffffff;              /* 页面底色 */
+  --c-surface: #ffffff;         /* 卡片/面板底色 */
+  --c-surface-soft: #f7f7f5;    /* 卡片内的浅底 */
+  --c-surface-hover: #eceff2;   /* 悬停底 */
+
+  /* ---------------- 颜色：户型图 ---------------- */
+  --c-room: #f7f7f5;            /* 房间填充 */
+  --c-room-hover: #eceff2;      /* 房间悬停填充 */
+  --c-room-circulation: #f1f2ee;/* 通道（交通空间，不是房间）填充 */
+  --c-ink: #1a1a1a;             /* 主文字 */
+  --c-ink-soft: #555555;        /* 次级文字 */
+  --c-ink-muted: #9aa0a6;       /* 提示/占位文字 */
+
+  /* ---------------- 颜色：线条 ---------------- */
+  --c-line: #e3e5e8;            /* 常规分隔线（细） */
+  --c-line-soft: #f0f1f3;       /* 更弱的分隔线 */
+  --c-wall: #262626;            /* 户型图墙体（对应设计稿的黑色粗墙） */
+
+  /* ---------------- 颜色：语义 ---------------- */
+  --c-accent: #1f6feb;          /* 选中/聚焦 */
+  --c-accent-soft: #e9f1fe;     /* 选中底色 */
+  --c-good: #157f3d;
+  --c-warn: #a16207;
+  --c-danger: #c62828;
+  --c-high-risk: #b45309;       /* 高风险设备（门锁/燃气阀/总闸） */
+
+  /* ---------------- 尺寸与密度 ---------------- */
+  --h-topbar: 52px;
+  --w-sidebar: 170px;
+  --w-panel: 224px;             /* 选中房间后左右数据/开关面板宽度 */
+  --radius: 0px;                /* 设计稿是直角，不做圆角 */
+  --gap: 12px;
+  --pad: 16px;
+
+  /* ---------------- 字号 ---------------- */
+  --fs-title: 22px;             /* 顶栏标题 */
+  --fs-body: 14px;
+  --fs-nav: 15px;               /* 左侧菜单 */
+  --fs-small: 12px;
+  --fs-tiny: 11px;
+
+  /* ---------------- 动效 ---------------- */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur: 260ms;
+
+  /* ---------------- 图表 ----------------
+     ⚠️ ECharts 画在 canvas 里，**读不到 CSS 变量**，必须把颜色显式传进去。
+     但也不要在组件里写死 —— 统一在这里定义，用 `utils/theme.js` 的 cssVar() 取。
+     这样"改配色只改一个文件"的约定在图表上也成立。 */
+  --c-chart-line: #1f6feb;
+  --c-chart-area-top: rgba(31, 111, 235, 0.2);
+  --c-chart-area-bottom: rgba(31, 111, 235, 0);
+  --c-chart-axis: #d5d8dd;
+  --c-chart-label: #7a828c;
+  --c-chart-grid: #f0f1f3;
+  --c-chart-bad: #c62828;
+  --c-chart-tip-bg: #ffffff;
+  --c-chart-tip-border: #e3e5e8;
+
+  /* ---------------- Element Plus 主题对齐 ----------------
+     目标是让组件库的长相贴合"细线、直角"的极简基调，
+     而不是各页面各写一遍 !important 覆盖。 */
+  --el-border-radius-base: 0px;
+  --el-border-radius-small: 0px;
+  --el-color-primary: var(--c-accent);
+  --el-text-color-primary: var(--c-ink);
+  --el-text-color-regular: var(--c-ink-soft);
+  --el-border-color: var(--c-line);
+  --el-border-color-light: var(--c-line-soft);
+  --el-border-color-lighter: var(--c-line-soft);
+  --el-fill-color-light: var(--c-surface-soft);
+  --el-fill-color-lighter: var(--c-surface-soft);
+}
+
+/* 等宽数字：读数/时间跳动时宽度不抖 */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
