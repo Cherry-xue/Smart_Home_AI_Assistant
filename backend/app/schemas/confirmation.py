@@ -30,6 +30,7 @@ class InterventionOut(BaseModel):
     expires_at: str | None = Field(default=None, description="失效时间（超时后不再接受决定）")
     created_at: dt.datetime | None = Field(default=None, description="挂起时间")
     question: str | None = Field(default=None, description="触发这次确认的原始问题")
+    home_id: int | None = Field(default=None, description="所属套房（前端按当前套房过滤；老数据可能为 None）")
 
 
 class PendingListOut(BaseModel):

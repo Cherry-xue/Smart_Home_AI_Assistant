@@ -187,7 +187,16 @@
           <header class="sec-head">
             <h3 class="sec-title">已保存的场景</h3>
             <span class="chip tnum">{{ scenes.length }}</span>
-            <button class="mini-btn" :class="{ spinning: loadingScenes }" title="刷新" @click="loadScenes">
+            <!-- 新建放在刷新左侧：不走对话，直接挑设备/能力/值自己配一个场景 -->
+            <button class="mini-btn mini-btn--new" title="不经过对话，自己挑设备配一个场景" @click="openCreator">
+              新建
+            </button>
+            <button
+              class="mini-btn mini-btn--plain"
+              :class="{ spinning: loadingScenes }"
+              title="刷新"
+              @click="loadScenes"
+            >
               刷新
             </button>
           </header>
@@ -238,7 +247,7 @@
     <!-- ==================== 编辑场景 ==================== -->
     <el-dialog
       v-model="editorOpen"
-      title="编辑场景"
+      :title="creating ? '新建场景' : '编辑场景'"
       width="860px"
       top="8vh"
       append-to-body
@@ -247,11 +256,16 @@
     >
       <div class="ed-field">
         <label>名称</label>
-        <el-input v-model="editorName" maxlength="64" show-word-limit />
+        <el-input
+          v-model="editorName"
+          maxlength="64"
+          show-word-limit
+          placeholder="例如：晚间阅读模式"
+        />
       </div>
       <div class="ed-field">
         <label>描述</label>
-        <el-input v-model="editorDesc" placeholder="这句话是在什么情况下说的（可留空）" />
+        <el-input v-model="editorDesc" placeholder="（可留空）" />
       </div>
 
       <div class="ed-head">
@@ -337,7 +351,9 @@
 
       <template #footer>
         <el-button @click="editorOpen = false">取消</el-button>
-        <el-button type="primary" :loading="editorSaving" @click="saveEditor">保存</el-button>
+        <el-button type="primary" :loading="editorSaving" @click="saveEditor">
+          {{ creating ? '创建' : '保存' }}
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -567,6 +583,8 @@ async function removeScene(s) {
 // ---------------------------------------------------------------- 编辑弹窗
 const editorOpen = ref(false)
 const editorScene = ref(null)
+/** true = 新建模式（editorScene 为空），false = 编辑既有场景。同一个弹窗两种用法。 */
+const creating = ref(false)
 const editorName = ref('')
 const editorDesc = ref('')
 const editorRows = ref([])
@@ -655,7 +673,30 @@ function onCapChange(row) {
   } else row.value = ''
 }
 
+/**
+ * 新建场景：不走对话编排，直接自己挑设备配动作。
+ *
+ * 与 openEditor 共用同一个弹窗，差别只在 creating 标志 ——
+ * 保存时据此决定调 createScene 还是 updateScene。
+ */
+async function openCreator() {
+  creating.value = true
+  editorScene.value = null
+  editorName.value = ''
+  editorDesc.value = ''
+  // 先给一行空白，省得打开就是一句"没有动作的场景不能保存"
+  editorRows.value = [{ device_code: '', capability: '', value: null }]
+  editorRejected.value = []
+  editorOpen.value = true
+  nextTick(() => {
+    if (edBody.value) edBody.value.scrollTop = 0
+  })
+
+  await ensureDevices()
+}
+
 async function openEditor(s) {
+  creating.value = false
   editorScene.value = s
   editorName.value = s.name
   editorDesc.value = s.description || ''
@@ -685,8 +726,8 @@ function addRow() {
 }
 
 async function saveEditor() {
-  if (!editorScene.value) return
-  if (!editorName.value.trim()) {
+  const name = editorName.value.trim()
+  if (!name) {
     ElMessage.warning('名称不能为空')
     return
   }
@@ -700,22 +741,38 @@ async function saveEditor() {
     return
   }
 
+  const payload = {
+    name,
+    description: editorDesc.value.trim(),
+    actions: editorRows.value.map((r) => ({
+      device_code: r.device_code,
+      capability: r.capability,
+      value: r.value,
+    })),
+  }
+
   editorSaving.value = true
   editorRejected.value = []
   try {
-    const out = await updateScene(editorScene.value.id, {
-      name: editorName.value.trim(),
-      description: editorDesc.value.trim(),
-      actions: editorRows.value.map((r) => ({
-        device_code: r.device_code,
-        capability: r.capability,
-        value: r.value,
-      })),
-    })
-    const idx = scenes.value.findIndex((x) => x.id === out.id)
-    if (idx >= 0) scenes.value[idx] = out
-    editorOpen.value = false
-    ElMessage.success('场景已保存')
+    if (creating.value) {
+      // 新建：挂在当前套房下，默认手动触发、启用。
+      // 后端同样会重跑一遍编排校验，不合法的动作整条 422 回来，不会存半个场景。
+      const out = await createScene({
+        home_id: home.currentId,
+        trigger_type: 'manual',
+        enabled: true,
+        ...payload,
+      })
+      scenes.value.unshift(out)
+      editorOpen.value = false
+      ElMessage.success(`已创建「${out.name}」，点卡片可继续编辑，收藏后显示在房屋总览`)
+    } else {
+      const out = await updateScene(editorScene.value.id, payload)
+      const idx = scenes.value.findIndex((x) => x.id === out.id)
+      if (idx >= 0) scenes.value[idx] = out
+      editorOpen.value = false
+      ElMessage.success('场景已保存')
+    }
   } catch (e) {
     // 422 的 detail 是 {message, rejected}，把被剔除的动作原样列出来
     const detail = e.payload?.detail
@@ -980,6 +1037,10 @@ onMounted(loadScenes)
 .mini-btn:hover {
   color: var(--c-accent);
   border-color: var(--c-accent);
+}
+/* 头部一行：「新建」吃掉自动外边距把自己推到最右，「刷新」紧挨其右侧不再留空 */
+.mini-btn--plain {
+  margin-left: 0;
 }
 
 .scene-list {

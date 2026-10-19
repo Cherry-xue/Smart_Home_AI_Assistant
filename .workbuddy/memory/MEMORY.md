@@ -28,11 +28,21 @@
 
 ## 三、硬约束与红线（不许放松）
 - 数据大概率无真实采集 → 来源必须可插拔（`DATA_MODE` = mock/mqtt/csv/real_gateway），上层无感
-- **门锁 / 燃气阀 / 电气总闸 / 布防撤防：只生成待确认项，永不自动执行**（`HIGH_RISK_AUTO_EXEC=false`，工具层无执行通道）
+- **门锁 / 燃气阀 / 电气总闸 / 布防撤防：绝不自动执行**（`HIGH_RISK_AUTO_EXEC=false`，自动路径无执行通道）。
+  ⚠️ 2026-10-19 口径细化（用户拍板）：**批准 ≠ 摆设**。人工在待确认列表点「批准并下发」后
+  **真的下发一次**；驳回则作废。准确表述是「**只能人工授权后执行，绝不自动执行**」。
+  唯一入口是 `executor.dispatch_confirmed()`（只被两处调用：`api/confirmations.py` 的
+  `manual-cmd-*` 分支、`agent/nodes.py::_settle_high_risk`）。状态链
+  `pending_confirm → confirmed → executed`（驳回 `rejected`）；`executed` 必须有
+  `confirmed_at`，`agent_check` 里有全库断言钉住
 - 数据不足不给确定性省费金额；健康异常只说"待确认线索"，不做医疗断言
 - **只有真的改了值，才说自己改了值**——"已下发指令"≠"设备状态已变"
 - 模拟数据必须显式标注来源/角标，不得伪装成真实实测值
 - 所有连接地址从环境变量读，**代码里禁止硬编码 `127.0.0.1`**
+- **回归脚本往真实库写了东西就必须自己清掉**（finally 里删）。`scene_check` 第 3 层建场景
+  却不删，跑 4 次往用户列表里塞了 8 条；历史残留**不得擅自删**，先列出来让用户点头
+- ⚠️ 杀进程只按 PID（`Get-NetTCPConnection -LocalPort 8000`），**禁止 `taskkill //IM python.exe`**
+  —— 常驻模拟器也是 python.exe，会被一起杀掉
 
 ## 四、接口契约（已冻结）
 - topic：`smart_home/{home_id}/room/{room_code}/device/{device_code}/{state|telemetry|event|cmd|cmd_ack}` + `smart_home/{home_id}/system/heartbeat`
@@ -143,6 +153,23 @@
 - ⚠️ **批量发版式的脚本改代码，替换串必须逐字核对**。上一轮给页面插
   `useHomeStore` import 时匹配串少了个 `ElMessageBox`，`str.replace` 静默失败、
   `useHomeStore()` 却插进去了 → 设备页白屏（构建还不报错）
+
+- ⚠️ **流式与非流式必须同步维护状态**：`runner.run` 会 `register_pending`。
+  `runner.stream` 收尾时的 `_normalize(snapshot.values)` **拿不到中断载荷**
+  （`__interrupt__` 只存在于流事件里），必须在 `astream` 循环里抓住它再登记。
+  漏了的表现：卡片画得出来，点「批准」404。已由 `agent_check` 3.6 断言钉住
+- ⚠️ **待确认的 `intervention_index` 是「同一会话内」的第几条**。
+  侧栏/消息抽屉是跨会话扁平列表，不能用列表下标（AppShell 曾恒传 0）。
+  前端按 `thread_id` 分组重编号（`uiIndex`）；待确认项现在带 `home_id`，按当前套房过滤
+
+- **历史会话落库**：`conversations` 只存会话壳、`agent_runs` 只存执行元数据，**都没有正文**，
+  所以新增了 `chat_messages`（`mysql/init/05_chat_history.sql`，库内共 **25 张表 / 218 字段**）。
+  后端 `services/chat_history.py` 自己开短 Session、异常全吞（落库失败不能影响对话）；
+  `runner` 不碰库，落库在 API 收尾处，SSE 里用 `run_in_threadpool`
+- ⚠️ **`app_rw` 无 DDL**：加表要用 `.env` 里的 `MYSQL_USER_ADMIN`（root）执行脚本，
+  执行方式见 05 脚本头部注释；`schema_check` 会按 ORM 模型自动核对表数
+- ⚠️ `mysql/init/01_schema.sql` **改动已入库的脚本无效**，新表一律另开 `0X_*.sql`，
+  否则"新建库"和"已经跑过一次的库"会走岔
 
 ## 六、LLM 报错码与排查顺序（血泪教训）
 - `403 AllocationQuota.FreeTierOnly` = 该模型版本免费额度用完；**别名（`qwen-plus`/`-latest`/`qwen-flash`）一律 403**，只有具体版本号可用

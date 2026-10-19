@@ -86,6 +86,10 @@ class HomeSimulator:
         self._lock_unlocked_until: dt.datetime | None = None
         self._prev_presence: dict[str, bool] = {}
 
+        #: 设备"设定值"（亮度 / 音量这类档位参数）：(device_code, capability) -> 值。
+        #: 首次采样时定一次，之后保持不变，只有收到指令才变 —— 详见 `_steady_value()`。
+        self._steady_values: dict[tuple[str, str], object] = {}
+
         # ---- 手动覆盖（后端下发的控制指令）----
         # 结构：device_code -> {capability: value}
         #
@@ -277,6 +281,26 @@ class HomeSimulator:
             return {}
         return ov
 
+    def _steady_value(self, dev: DeviceSpec, capability: str, now: dt.datetime, gen) -> object:
+        """取一个"设定值"（亮度 / 音量这类档位参数）。
+
+        ⚠️ 为什么不能每帧随机：亮度、音量是**用户设定的档位**，不是随时间漂的物理量。
+            每帧 `rng.randint()` 的后果是"刚调成 35%，下一秒又跳回 72%"，
+            用户根本判断不出自己那条指令到底生效没有 —— 看起来就像控制链路坏了。
+
+        取值顺序：
+            ① 下发过该能力的指令 → 严格用指令值（`manual_overrides`，持久生效）；
+            ② 没有 → 首次采样时用 `gen()` 生成一次并记住，之后一直返回它。
+               `gen` 传成 lambda（**惰性**），避免每次采样都白白消耗一次随机数。
+        """
+        ov = self._active_override(dev.code, now)
+        if capability in ov:
+            return ov[capability]
+        key = (dev.code, capability)
+        if key not in self._steady_values:
+            self._steady_values[key] = gen()
+        return self._steady_values[key]
+
     def apply_command(
         self,
         device_code: str,
@@ -457,8 +481,16 @@ class HomeSimulator:
         if t == "light":
             m["power_on"] = on
             if on:
+                # ⚠️ 亮度是**设定值**，不是每帧随机的噪声。
+                #   ① 下发过调光指令 → 严格用指令值（`manual_overrides`，持久生效）；
+                #   ② 没下发过 → 首次采样定一个初值，之后一直保持不变。
+                #   真实灯具不会自己每隔几秒换个亮度；随机跳变的坏处是
+                #   "刚调成 30%，下一秒又跳回 72%"，用户根本判断不出指令到底生效没有。
                 lo, hi = prof["brightness"]
-                m["brightness"] = dev.clamp("brightness", self.rng.randint(lo, hi))
+                m["brightness"] = dev.clamp(
+                    "brightness", self._steady_value(dev, "brightness", now,
+                                                     lambda: self.rng.randint(lo, hi))
+                )
                 u["brightness"] = "%"
         elif t == "curtain":
             pos = 100
@@ -479,12 +511,19 @@ class HomeSimulator:
         elif t == "tv":
             m["power_on"] = on
             if on:
-                m["volume"] = dev.clamp("volume", self.rng.randint(*prof["volume"]))
+                # 音量同亮度：**设定值**，不是噪声
+                m["volume"] = dev.clamp(
+                    "volume", self._steady_value(dev, "volume", now,
+                                                 lambda: self.rng.randint(*prof["volume"]))
+                )
                 u["volume"] = "%"
         elif t == "speaker":
             m["power_on"] = on
             if on:
-                m["volume"] = dev.clamp("volume", self.rng.randint(*prof["volume"]))
+                m["volume"] = dev.clamp(
+                    "volume", self._steady_value(dev, "volume", now,
+                                                 lambda: self.rng.randint(*prof["volume"]))
+                )
                 u["volume"] = "%"
         elif t == "humidifier":
             m["power_on"] = on

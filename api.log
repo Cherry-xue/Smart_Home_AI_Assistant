@@ -1,13 +1,13 @@
-INFO:     Started server process [21736]
+INFO:     Started server process [31964]
 INFO:     Waiting for application startup.
-2026-10-19 16:43:47,032 INFO    app.main | 启动中… 环境=development 数据源=mqtt 时区=Asia/Shanghai
-2026-10-19 16:43:47,038 INFO    app.main | 设备目录已加载：38 台设备 / 10 个房间
-2026-10-19 16:43:49,483 INFO    app.main | 缓存预热完成：扫描 69 行 → 覆盖 38 台设备 / 填入 69 个值（最近 2 天）
-2026-10-19 16:43:49,485 INFO    app.main | MQTT 订阅线程已启动 → 127.0.0.1:1883（独立线程，自带事件循环）
-2026-10-19 16:43:49,485 INFO    app.main | 服务就绪 → http://127.0.0.1:8000/docs
+2026-10-19 20:21:47,261 INFO    app.main | 启动中… 环境=development 数据源=mqtt 时区=Asia/Shanghai
+2026-10-19 20:21:47,272 INFO    app.main | 设备目录已加载：39 台设备 / 16 个房间
+2026-10-19 20:21:50,147 INFO    app.main | 缓存预热完成：扫描 73 行 → 覆盖 39 台设备 / 填入 73 个值（最近 2 天）
+2026-10-19 20:21:50,149 INFO    app.main | MQTT 订阅线程已启动 → 127.0.0.1:1883（独立线程，自带事件循环）
+2026-10-19 20:21:50,149 INFO    app.main | 服务就绪 → http://127.0.0.1:8000/docs
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-2026-10-19 16:43:49,488 INFO    app.mqtt.subscriber | 已连接 127.0.0.1:1883，订阅 smart_home/#
+2026-10-19 20:21:50,152 INFO    app.mqtt.subscriber | 已连接 127.0.0.1:1883，订阅 smart_home/#
 [loop] Windows 事件循环已切换为 Selector
 
 ==============================================================================
@@ -23,85 +23,244 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
   MQTT broker : 127.0.0.1:1883（订阅服务会在独立线程里连接；broker 没起时接口仍可用，但数据不进库）
 ==============================================================================
 
-INFO:     127.0.0.1:60118 - "GET /api/health HTTP/1.1" 200 OK
-2026-10-19 16:44:00,224 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 385, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 40}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,229 INFO    app.mqtt.subscriber | 收到设备回执 command_id=385 → 已确认
-2026-10-19 16:44:00,263 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 386, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,267 INFO    app.mqtt.subscriber | 收到设备回执 command_id=386 → 已确认
-2026-10-19 16:44:00,267 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 387, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,270 INFO    app.mqtt.subscriber | 收到设备回执 command_id=387 → 已确认
-2026-10-19 16:44:00,271 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 388, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,275 INFO    app.mqtt.subscriber | 收到设备回执 command_id=388 → 已确认
-2026-10-19 16:44:00,340 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 390, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,344 INFO    app.mqtt.subscriber | 收到设备回执 command_id=390 → 已确认
-2026-10-19 16:44:00,345 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 391, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,349 INFO    app.mqtt.subscriber | 收到设备回执 command_id=391 → 已确认
-2026-10-19 16:44:00,351 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 392, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,354 INFO    app.mqtt.subscriber | 收到设备回执 command_id=392 → 已确认
-2026-10-19 16:44:00,407 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 394, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,410 INFO    app.mqtt.subscriber | 收到设备回执 command_id=394 → 已确认
-2026-10-19 16:44:00,412 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 395, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,415 INFO    app.mqtt.subscriber | 收到设备回执 command_id=395 → 已确认
-2026-10-19 16:44:00,417 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 396, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,421 INFO    app.mqtt.subscriber | 收到设备回执 command_id=396 → 已确认
-2026-10-19 16:44:00,463 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 398, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,467 INFO    app.mqtt.subscriber | 收到设备回执 command_id=398 → 已确认
-2026-10-19 16:44:00,469 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 399, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,473 INFO    app.mqtt.subscriber | 收到设备回执 command_id=399 → 已确认
-2026-10-19 16:44:00,475 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:00', 'command_id': 400, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:00,480 INFO    app.mqtt.subscriber | 收到设备回执 command_id=400 → 已确认
-INFO:     127.0.0.1:60140 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60141 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60142 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60143 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "POST /api/scenes/plan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "POST /api/scenes HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "GET /api/scenes HTTP/1.1" 200 OK
-2026-10-19 16:44:39,118 INFO    app.mqtt.publisher | 指令发布客户端已连接 127.0.0.1:1883
-2026-10-19 16:44:39,119 INFO    app.mqtt.publisher | 已下发指令 #402 → living_room_light_strip.brightness = 30
-2026-10-19 16:44:39,120 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_strip/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_strip', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:39', 'command_id': 402, 'issued_by': 'scene:14', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:39,123 INFO    app.mqtt.subscriber | 收到设备回执 command_id=402 → 已确认
-2026-10-19 16:44:39,123 INFO    app.mqtt.publisher | 已下发指令 #403 → living_room_ac.target_temp = 24
-2026-10-19 16:44:39,124 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_ac/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_ac', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:39', 'command_id': 403, 'issued_by': 'scene:14', 'source': 'backend', 'metrics': {'target_temp': 24}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:39,126 INFO    app.mqtt.subscriber | 收到设备回执 command_id=403 → 已确认
-2026-10-19 16:44:39,127 INFO    app.mqtt.publisher | 已下发指令 #404 → living_room_tv.power_on = True
-2026-10-19 16:44:39,127 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:39', 'command_id': 404, 'issued_by': 'scene:14', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:39,130 INFO    app.mqtt.subscriber | 收到设备回执 command_id=404 → 已确认
-2026-10-19 16:44:39,130 INFO    app.mqtt.publisher | 已下发指令 #405 → living_room_speaker.power_on = True
-2026-10-19 16:44:39,132 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_speaker/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_speaker', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:39', 'command_id': 405, 'issued_by': 'scene:14', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:39,134 INFO    app.mqtt.subscriber | 收到设备回执 command_id=405 → 已确认
-INFO:     127.0.0.1:60191 - "POST /api/scenes/14/run HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "GET /api/scenes/runs/19 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "POST /api/scenes HTTP/1.1" 200 OK
-2026-10-19 16:44:39,156 INFO    app.mqtt.publisher | 已下发指令 #407 → living_room_light_main.power_on = False
-2026-10-19 16:44:39,157 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T16:44:39', 'command_id': 407, 'issued_by': 'scene:15', 'source': 'backend', 'metrics': {'power_on': False}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
-2026-10-19 16:44:39,159 INFO    app.mqtt.subscriber | 收到设备回执 command_id=407 → 已确认
-INFO:     127.0.0.1:60191 - "POST /api/scenes/15/run HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "GET /api/homes HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "GET /api/devices?home_id=2 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "GET /api/devices?home_id=77 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "GET /api/devices/43/capabilities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "POST /api/scenes/plan HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60191 - "POST /api/scenes/plan HTTP/1.1" 200 OK
-D:\soft\anaconda3\envs\ai0707\Lib\site-packages\fastapi\telemetry\_api.py:244: StarletteDeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
-  return function(**arguments)
-INFO:     127.0.0.1:60191 - "POST /api/scenes HTTP/1.1" 422 Unprocessable Content
-INFO:     127.0.0.1:60196 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60205 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60226 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60225 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60227 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60228 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60304 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60303 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60305 - "GET /api/homes HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60306 - "GET /api/scenes?home_id=1 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60311 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60314 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60316 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60315 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60399 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60400 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60402 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60401 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55796 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55800 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55799 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+2026-10-19 20:21:57,815 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='unlocked' → pending_confirm（command_id=485）
+INFO:     127.0.0.1:55810 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55816 - "GET /api/confirmations/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55827 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55826 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55831 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55830 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55841 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55840 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55856 - "GET /api/health HTTP/1.1" 200 OK
+2026-10-19 20:22:15,546 INFO    app.mqtt.publisher | 指令发布客户端已连接 127.0.0.1:1883
+2026-10-19 20:22:15,547 INFO    app.mqtt.publisher | 已下发指令 #485 → front_door_lock.lock_state = 'unlocked'
+2026-10-19 20:22:15,549 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:22:15', 'command_id': 485, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'unlocked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:22:15,551 INFO    app.services.scenes.executor | 人工批准后下发成功：front_door_lock.lock_state='unlocked'（command_id=485）
+2026-10-19 20:22:15,552 INFO    app.api.confirmations | 手动高风险指令已批准并下发 command_id=485
+INFO:     127.0.0.1:55863 - "POST /api/confirmations/manual-cmd-485 HTTP/1.1" 200 OK
+2026-10-19 20:22:15,553 INFO    app.mqtt.subscriber | 收到设备回执 command_id=485 → 已确认
+INFO:     127.0.0.1:55871 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55870 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55873 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55894 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55900 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55899 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55914 - "GET /api/devices/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55916 - "GET /api/confirmations/pending HTTP/1.1" 200 OK
+2026-10-19 20:22:32,600 INFO    app.services.device_control | 手动控制 device=kitchen_gas_valve cap=valve_state value='closed' → pending_confirm（command_id=486）
+INFO:     127.0.0.1:55922 - "POST /api/devices/24/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55925 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55926 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55930 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55929 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+2026-10-19 20:22:37,467 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='locked' → pending_confirm（command_id=487）
+INFO:     127.0.0.1:55934 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55936 - "GET /api/confirmations/pending HTTP/1.1" 200 OK
+2026-10-19 20:22:38,987 INFO    app.api.confirmations | 手动高风险指令被驳回 command_id=486
+INFO:     127.0.0.1:55941 - "POST /api/confirmations/manual-cmd-486 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55962 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55961 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55970 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55979 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55983 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55982 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55988 - "GET /api/devices/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56000 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56003 - "GET /api/confirmations/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56007 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56006 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+2026-10-19 20:22:57,343 INFO    app.api.confirmations | 手动高风险指令被驳回 command_id=487
+INFO:     127.0.0.1:56009 - "POST /api/confirmations/manual-cmd-487 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56026 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56027 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56034 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56033 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56039 - "GET /api/devices/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56063 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56067 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56066 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56070 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56078 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56077 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56080 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49799 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49798 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51984 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51985 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60249 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60248 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60264 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60272 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60271 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60277 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+2026-10-19 20:23:49,277 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='locked' → pending_confirm（command_id=488）
+INFO:     127.0.0.1:60280 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60288 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60289 - "GET /api/homes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60287 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60291 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60292 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60295 - "GET /api/scenes?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60297 - "GET /api/floorplan?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60301 - "GET /api/confirmations/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60296 - "GET /api/energy/summary?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:23:50,873 INFO    app.mqtt.publisher | 已下发指令 #488 → front_door_lock.lock_state = 'locked'
+2026-10-19 20:23:50,874 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:23:50', 'command_id': 488, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'locked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:23:50,876 INFO    app.services.scenes.executor | 人工批准后下发成功：front_door_lock.lock_state='locked'（command_id=488）
+2026-10-19 20:23:50,876 INFO    app.api.confirmations | 手动高风险指令已批准并下发 command_id=488
+INFO:     127.0.0.1:60304 - "POST /api/confirmations/manual-cmd-488 HTTP/1.1" 200 OK
+2026-10-19 20:23:50,877 INFO    app.mqtt.subscriber | 收到设备回执 command_id=488 → 已确认
+INFO:     127.0.0.1:60313 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60312 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60319 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60324 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60330 - "GET /api/devices/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60335 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60334 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60340 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60361 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60360 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+2026-10-19 20:24:18,164 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 489, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 40}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,167 INFO    app.mqtt.subscriber | 收到设备回执 command_id=489 → 已确认
+2026-10-19 20:24:18,203 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 490, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,205 INFO    app.mqtt.subscriber | 收到设备回执 command_id=490 → 已确认
+2026-10-19 20:24:18,207 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 491, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,209 INFO    app.mqtt.subscriber | 收到设备回执 command_id=491 → 已确认
+2026-10-19 20:24:18,211 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 492, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,214 INFO    app.mqtt.subscriber | 收到设备回执 command_id=492 → 已确认
+2026-10-19 20:24:18,238 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 493, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'locked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,242 INFO    app.mqtt.subscriber | 收到设备回执 command_id=493 → 已确认
+2026-10-19 20:24:18,285 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 494, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,288 INFO    app.mqtt.subscriber | 收到设备回执 command_id=494 → 已确认
+2026-10-19 20:24:18,289 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 495, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,292 INFO    app.mqtt.subscriber | 收到设备回执 command_id=495 → 已确认
+2026-10-19 20:24:18,293 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 496, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,295 INFO    app.mqtt.subscriber | 收到设备回执 command_id=496 → 已确认
+2026-10-19 20:24:18,341 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 498, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,344 INFO    app.mqtt.subscriber | 收到设备回执 command_id=498 → 已确认
+2026-10-19 20:24:18,345 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 499, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,347 INFO    app.mqtt.subscriber | 收到设备回执 command_id=499 → 已确认
+2026-10-19 20:24:18,349 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 500, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,351 INFO    app.mqtt.subscriber | 收到设备回执 command_id=500 → 已确认
+2026-10-19 20:24:18,387 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 502, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,389 INFO    app.mqtt.subscriber | 收到设备回执 command_id=502 → 已确认
+2026-10-19 20:24:18,390 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 503, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,392 INFO    app.mqtt.subscriber | 收到设备回执 command_id=503 → 已确认
+2026-10-19 20:24:18,393 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:18', 'command_id': 504, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:18,395 INFO    app.mqtt.subscriber | 收到设备回执 command_id=504 → 已确认
+INFO:     127.0.0.1:60379 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60380 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60385 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60384 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60396 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60404 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60403 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+2026-10-19 20:24:31,629 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 506, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 40}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,634 INFO    app.mqtt.subscriber | 收到设备回执 command_id=506 → 已确认
+2026-10-19 20:24:31,665 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 507, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,667 INFO    app.mqtt.subscriber | 收到设备回执 command_id=507 → 已确认
+2026-10-19 20:24:31,668 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 508, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,671 INFO    app.mqtt.subscriber | 收到设备回执 command_id=508 → 已确认
+2026-10-19 20:24:31,673 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 509, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,675 INFO    app.mqtt.subscriber | 收到设备回执 command_id=509 → 已确认
+2026-10-19 20:24:31,698 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 510, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'locked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,701 INFO    app.mqtt.subscriber | 收到设备回执 command_id=510 → 已确认
+2026-10-19 20:24:31,734 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 511, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,736 INFO    app.mqtt.subscriber | 收到设备回执 command_id=511 → 已确认
+2026-10-19 20:24:31,738 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 512, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,740 INFO    app.mqtt.subscriber | 收到设备回执 command_id=512 → 已确认
+2026-10-19 20:24:31,741 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 513, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,743 INFO    app.mqtt.subscriber | 收到设备回执 command_id=513 → 已确认
+2026-10-19 20:24:31,791 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 515, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,794 INFO    app.mqtt.subscriber | 收到设备回执 command_id=515 → 已确认
+2026-10-19 20:24:31,795 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 516, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,797 INFO    app.mqtt.subscriber | 收到设备回执 command_id=516 → 已确认
+2026-10-19 20:24:31,798 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 517, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,800 INFO    app.mqtt.subscriber | 收到设备回执 command_id=517 → 已确认
+2026-10-19 20:24:31,834 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 519, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,837 INFO    app.mqtt.subscriber | 收到设备回执 command_id=519 → 已确认
+2026-10-19 20:24:31,837 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 520, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,839 INFO    app.mqtt.subscriber | 收到设备回执 command_id=520 → 已确认
+2026-10-19 20:24:31,840 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:24:31', 'command_id': 521, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:24:31,843 INFO    app.mqtt.subscriber | 收到设备回执 command_id=521 → 已确认
+INFO:     127.0.0.1:60423 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60427 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60426 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/homes/999/rooms HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60429 - "GET /api/devices HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/devices?type=light HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/devices?room_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/devices?high_risk_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/devices/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/devices/9/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/devices/6/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/devices/999999 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60429 - "GET /api/devices/999999/capabilities HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60429 - "GET /api/devices/9/readings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/devices/9/readings?metric=humidity HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60434 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/devices/9/readings?from=2026-08-20T20%3A24%3A40.073536&to=2026-10-19T20%3A24%3A40.073536 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:60429 - "GET /api/devices/9/readings?from=2026-10-19T20%3A24%3A40.073536&to=2026-10-19T19%3A24%3A40.073536 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:60429 - "GET /api/energy/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/knowledge/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/knowledge/documents HTTP/1.1" 200 OK
+2026-10-19 20:24:41,843 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:60429 - "GET /api/knowledge/search?q=%E5%AE%A2%E5%8E%85%E7%A9%BA%E8%B0%83%E6%BB%A4%E7%BD%91%E5%A4%9A%E4%B9%85%E6%B8%85%E6%B4%97%E4%B8%80%E6%AC%A1&k=3 HTTP/1.1" 200 OK
+2026-10-19 20:24:42,165 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:60429 - "GET /api/knowledge/search?q=%E7%87%83%E6%B0%94%E6%B3%84%E6%BC%8F%E6%80%8E%E4%B9%88%E5%A4%84%E7%90%86&doc_type=emergency_plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60429 - "GET /api/knowledge/search?q= HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:60450 - "GET /api/security/alarms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60451 - "GET /api/security/alarms?from=2026-10-15T00:00:00&to=2026-10-16T12:00:00 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60452 - "GET /api/security/alarms?from=2026-10-15T00:00:00&to=2026-10-16T12:00:00 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60454 - "POST /api/security/alarms/999999/ack HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60455 - "POST /api/security/alarms/1/ack HTTP/1.1" 400 Bad Request
+2026-10-19 20:24:43,792 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:60456 - "GET /api/care/observations HTTP/1.1" 200 OK
+2026-10-19 20:24:43,932 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:60457 - "GET /api/care/observations HTTP/1.1" 200 OK
+2026-10-19 20:24:44,022 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:60458 - "GET /api/care/observations?member_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:24:44,090 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:60459 - "GET /api/care/observations?member_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60460 - "GET /api/suggestions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60462 - "GET /api/suggestions?level=silent HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60463 - "POST /api/suggestions/999999/dismiss HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60464 - "GET /api/security/alarms?from=2026-10-16T12:00:00&to=2026-10-15T00:00:00 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:60465 - "GET /api/security/alarms?from=2026-01-01T00:00:00&to=2026-10-16T00:00:00 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:60466 - "GET /api/security/alarms?sync=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60467 - "GET /api/care/observations?sync=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60468 - "GET /api/security/alarms?level=critical HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60474 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60473 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60480 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60481 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60490 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60489 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60494 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60502 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60501 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60506 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60517 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60533 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60532 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60547 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60546 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60555 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60556 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60565 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60564 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60585 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60584 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60587 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60589 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60610 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60609 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK

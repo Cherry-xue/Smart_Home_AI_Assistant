@@ -32,7 +32,7 @@ import logging
 import re
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.db.catalog import CapabilityRange, DeviceCatalog, DeviceInfo
@@ -50,6 +50,11 @@ _FALSE_WORDS = {"false", "0", "off", "close", "no", "关", "关闭", "关上"}
 
 #: cmd_ack 回执在 result_message 里的标记（由 `mqtt/subscriber.py` 写入）
 ACK_MARK = "[回执]"
+
+#: 手动下发产生的待确认项的 thread_id 前缀：`manual-cmd-12` = 指令 12 在等人批准。
+#: ⚠️ 这个前缀是**判定依据** —— `/api/confirmations/{thread_id}` 收到它就下发真实指令，
+#:    收到别的就去恢复 Agent 会话。两者不能混。
+MANUAL_PENDING_PREFIX = "manual-cmd-"
 
 
 class DeviceCommandError(Exception):
@@ -158,6 +163,78 @@ def _require_writable(device: DeviceInfo, code: str) -> CapabilityRange:
 
 
 # ============================================================ 执行
+def _register_manual_pending(
+    *,
+    thread_id: str,
+    device: DeviceInfo,
+    cap: CapabilityRange,
+    value: Any,
+    command_id: int,
+    note: str | None,
+) -> None:
+    """把手动控制产生的高风险指令登记进待确认索引。
+
+    ⚠️ 只写 `device_commands` 是不够的：顶栏「消息」抽屉和手机端的待确认弹窗
+    读的都是 `runner._PENDING`。不登记的话，用户会看到"已生成待确认项"，
+    去「消息」里却什么都没有 —— 这正是被当成 bug 的那个现象。
+
+    载荷结构与 Agent 中断时**完全一致**，这样列表接口和前端卡片不需要两套渲染。
+    """
+    from app.agent.runner import register_pending
+
+    register_pending(
+        thread_id,
+        {
+            "interventions": [
+                {
+                    "kind": "high_risk",
+                    "device_code": device.code,
+                    "device_name": device.name,
+                    "capability": cap.code,
+                    "value": value,
+                    # ⚠️ 不要拼 room_name：设备名本身已经带房间（"厨房燃气阀"），
+                    #    再拼一次就成了"厨房厨房燃气阀"。
+                    "prompt": f"是否允许 {device.name} 执行「{cap.display_name} = {value}」？",
+                    "detail": note or "该设备属于高风险设备，必须人工批准后才会下发。",
+                    "options": ["approve", "reject"],
+                    "command_id": command_id,
+                    # 手动待办不设过期：人什么时候看到就什么时候处理。
+                    "expires_at": None,
+                }
+            ],
+            "expires_at": None,
+            "message": "手动控制：1 个高风险动作需要你确认",
+        },
+        extra={"home_id": device.home_id, "question": note or "手动控制"},
+    )
+
+
+def _expire_stale_manual(
+    db: Session, *, device_id: int, capability: str, keep_id: int
+) -> None:
+    """把同一设备、同一能力下**更早的手动待确认项**标为作废（保留 `keep_id`）。
+
+    没有这一步的话，用户在面板上连点三次"解锁"就会攒出三张一模一样的待办；
+    更糟的是批准其中任意一张都会真的下发一次 —— 等于重复开锁。
+    """
+    db.execute(
+        text(
+            """
+            UPDATE device_commands
+               SET status = 'expired',
+                   result_message = '被同一设备的新指令取代，自动作废'
+             WHERE device_id = :d
+               AND command = :c
+               AND status = 'pending_confirm'
+               AND id < :keep
+               AND JSON_UNQUOTE(JSON_EXTRACT(params_json, '$.source')) = 'dashboard'
+            """
+        ),
+        {"d": device_id, "c": capability, "keep": keep_id},
+    )
+    db.commit()
+
+
 def run_command(
     db: Session,
     catalog: DeviceCatalog,
@@ -216,9 +293,30 @@ def run_command(
 
     # ---- 消息措辞：只说做过的事 ----
     if pending is not None:
+        # ⚠️ 只写库是不够的：顶栏「消息」抽屉读的是 `_PENDING` 索引，
+        #    不登记的话界面上只会得到一句"已生成待确认项"，却**找不到那条待办**
+        #    —— 用户看到的就是"提示说有，消息里没有"。
+        #    thread_id 用 `manual-cmd-{id}` 前缀，批准时靠它区分"手动控制"与"Agent 会话"。
+        if final.command_id:
+            # 连点三次"解锁"不该攒三张待办：更早的手动待确认项直接作废。
+            # ⚠️ 只动 source=dashboard 的行 —— Agent 的待确认有它自己的中断索引，
+            #    在这里改状态会让"库里有、内存里没有"两边对不上。
+            _expire_stale_manual(
+                db, device_id=device.id, capability=capability, keep_id=final.command_id
+            )
+            _register_manual_pending(
+                thread_id=f"{MANUAL_PENDING_PREFIX}{final.command_id}",
+                device=device,
+                cap=cap,
+                value=value,
+                command_id=final.command_id,
+                note=note,
+            )
+        else:  # pragma: no cover - 落库失败时 command_id 才会为空
+            log.warning("高风险指令没有拿到 command_id，无法登记待确认：%s", device.code)
         message = (
             f"「{device.name} {cap.display_name}」属于高风险设备，已生成**待确认项**，"
-            "不会自动执行。请到「消息」里由人工确认（确认也只是留痕，动作仍需现场或授权通道完成）。"
+            "不会自动执行。请到「消息」里人工批准 —— 批准后会由系统下发，驳回则作废。"
         )
         status = "pending_confirm"
     elif executed is not None:

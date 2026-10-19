@@ -22,9 +22,11 @@ from typing import Any, AsyncIterator
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from app.agent import runner
 from app.api.deps import get_tool_context
+from app.services import chat_history
 from app.tools import ToolContext
 
 log = logging.getLogger("app.api.chat")
@@ -53,6 +55,29 @@ class ChatOut(BaseModel):
     run_result: dict[str, Any] | None = None
 
 
+class ChatSessionOut(BaseModel):
+    """历史会话列表里的一行。"""
+
+    thread_id: str
+    title: str = "新会话"
+    home_id: int | None = None
+    created_at: dt.datetime | None = None
+    last_at: dt.datetime | None = None
+    message_count: int = 0
+
+
+class ChatMessageOut(BaseModel):
+    """回放用的一条消息。"""
+
+    id: int
+    role: str
+    content: str = ""
+    sections: dict[str, Any] = Field(default_factory=dict)
+    trace: list[dict[str, Any]] = Field(default_factory=list)
+    interrupted: bool = False
+    created_at: dt.datetime | None = None
+
+
 def _new_thread_id() -> str:
     return f"c-{dt.datetime.now():%Y%m%d}-{uuid.uuid4().hex[:8]}"
 
@@ -68,6 +93,17 @@ async def chat(body: ChatIn, ctx: ToolContext = Depends(get_tool_context)) -> Ch
         ctx=ctx,
         home_id=body.home_id,
         member_name=body.member_name,
+    )
+    # 落库放到线程池：本端点是 async，同步 DB 调用会卡住事件循环
+    await run_in_threadpool(
+        chat_history.record_turn,
+        thread_id,
+        question=body.question,
+        answer=out["answer"],
+        home_id=body.home_id,
+        sections=out["answer_sections"],
+        trace=out["trace"],
+        interrupted=out["interrupted"],
     )
     return ChatOut(
         thread_id=thread_id,
@@ -97,6 +133,7 @@ async def chat_stream(body: ChatIn, ctx: ToolContext = Depends(get_tool_context)
     async def event_source() -> AsyncIterator[str]:
         # 先告诉前端这次用的是哪个会话，后续确认/追问都要带着它
         yield _sse({"type": "start", "thread_id": thread_id})
+        final: dict[str, Any] | None = None
         try:
             async for event in runner.stream(
                 body.question,
@@ -105,10 +142,26 @@ async def chat_stream(body: ChatIn, ctx: ToolContext = Depends(get_tool_context)
                 home_id=body.home_id,
                 member_name=body.member_name,
             ):
+                if event.get("type") == "final":
+                    final = event.get("result") or {}
                 yield _sse(event)
         except Exception as e:  # noqa: BLE001
             log.exception("流式对话失败")
             yield _sse({"type": "error", "message": f"{type(e).__name__}: {e}"})
+
+        # 历史会话落库：放在 done 之前，保证前端刷新会话列表时这条已经在了。
+        # 失败不影响本轮对话（record_turn 内部已吞异常并记日志）。
+        if final is not None:
+            await run_in_threadpool(
+                chat_history.record_turn,
+                thread_id,
+                question=body.question,
+                answer=final.get("answer") or "",
+                home_id=body.home_id,
+                sections=final.get("answer_sections") or {},
+                trace=final.get("trace") or [],
+                interrupted=bool(final.get("interrupted")),
+            )
         yield _sse({"type": "done", "thread_id": thread_id})
 
     return StreamingResponse(
@@ -121,6 +174,28 @@ async def chat_stream(body: ChatIn, ctx: ToolContext = Depends(get_tool_context)
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.get(
+    "/sessions",
+    response_model=list[ChatSessionOut],
+    summary="历史会话列表（大屏右侧栏）",
+)
+def list_sessions(home_id: int | None = None, limit: int = 30) -> list[ChatSessionOut]:
+    """按套房列出会话，最近说过的排前面。
+
+    `home_id` 不传则返回全部（调试用）；大屏会传当前套房。
+    """
+    return [ChatSessionOut(**row) for row in chat_history.list_sessions(home_id, limit)]
+
+
+@router.get(
+    "/sessions/{thread_id}/messages",
+    response_model=list[ChatMessageOut],
+    summary="某个历史会话的全部消息（回放）",
+)
+def session_messages(thread_id: str, limit: int = 200) -> list[ChatMessageOut]:
+    return [ChatMessageOut(**row) for row in chat_history.list_messages(thread_id, limit)]
 
 
 def _sse(payload: dict[str, Any]) -> str:

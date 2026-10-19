@@ -224,6 +224,11 @@ def layer3(base_url: str) -> Checker:
     print("=" * 76)
     client = httpx.Client(base_url=base_url.rstrip("/"), timeout=60.0)
 
+    # 本层会建 2 个场景跑执行流程。记下 id，finally 里删掉 ——
+    # 否则每跑一次回归就多两条「（验收脚本）」，用户的场景列表会被脚本产物占满。
+    scene_id = None
+    sid2 = None
+
     try:
         r = client.post(
             "/api/scenes/plan",
@@ -359,6 +364,13 @@ def layer3(base_url: str) -> Checker:
     except Exception as e:  # noqa: BLE001
         ck.check(f"API 层执行异常：{type(e).__name__}: {e}", False)
     finally:
+        for _sid in (scene_id, sid2):
+            if not _sid:
+                continue
+            try:
+                client.delete(f"/api/scenes/{_sid}")
+            except Exception:  # noqa: BLE001
+                print(f"     （清理临时场景 {_sid} 失败，需要手工删除）")
         client.close()
     return ck
 

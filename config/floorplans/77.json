@@ -1,7 +1,7 @@
 {
   "version": 1,
   "home_id": 77,
-  "updated_at": "2026-10-19T14:12:01",
+  "updated_at": "2026-10-19T20:09:50",
   "view_box": {
     "x": 0.0,
     "y": 0.0,
@@ -16,8 +16,78 @@
       "x": 358.0,
       "y": 314.0,
       "w": 223.0,
-      "h": 538.0,
+      "h": 535.0,
       "is_circulation": false
+    },
+    {
+      "code": "room_2",
+      "name": "客厅",
+      "type": "客厅",
+      "x": 582.0,
+      "y": 314.0,
+      "w": 571.0,
+      "h": 535.0,
+      "is_circulation": false
+    },
+    {
+      "code": "room_3",
+      "name": "玄关",
+      "type": "玄关",
+      "x": 1153.0,
+      "y": 669.0,
+      "w": 593.0,
+      "h": 202.0,
+      "is_circulation": false
+    },
+    {
+      "code": "room_4",
+      "name": "厨房",
+      "type": "厨房",
+      "x": 1746.0,
+      "y": 551.0,
+      "w": 358.0,
+      "h": 320.0,
+      "is_circulation": false
+    },
+    {
+      "code": "room_5",
+      "name": "次卧",
+      "type": "卧室",
+      "x": 1399.0,
+      "y": 871.0,
+      "w": 549.0,
+      "h": 477.0,
+      "is_circulation": false
+    },
+    {
+      "code": "room_6",
+      "name": "卫生间",
+      "type": "卫生间",
+      "x": 1087.0,
+      "y": 1043.0,
+      "w": 312.0,
+      "h": 305.0,
+      "is_circulation": false
+    },
+    {
+      "code": "room_7",
+      "name": "主卧",
+      "type": "卧室",
+      "x": 500.0,
+      "y": 851.0,
+      "w": 587.0,
+      "h": 497.0,
+      "is_circulation": false
+    },
+    {
+      "code": "hallway_1",
+      "name": "走廊",
+      "type": "走廊",
+      "x": 1087.0,
+      "y": 871.0,
+      "w": 312.0,
+      "h": 172.0,
+      "is_circulation": true
     }
   ],
   "background": {

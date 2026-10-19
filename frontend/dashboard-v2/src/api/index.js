@@ -179,6 +179,15 @@ export const chatOnce = (question, threadId = null, homeId = HOME_ID) =>
 export const chatStream = (question, threadId = null, homeId = HOME_ID, opts = {}) =>
   postStream('/chat/stream', { question, thread_id: threadId, home_id: homeId }, opts)
 
+// ---------------------------------------------------------------- 历史会话
+/** 历史会话列表（右侧栏）。按套房过滤，最近说过的排前面。 */
+export const listChatSessions = (homeId = HOME_ID, limit = 30) =>
+  get('/chat/sessions', { home_id: homeId, limit })
+
+/** 回放某个会话的全部消息。 */
+export const listChatMessages = (threadId, limit = 200) =>
+  get(`/chat/sessions/${encodeURIComponent(threadId)}/messages`, { limit })
+
 // ---------------------------------------------------------------- 人工确认
 export const listPending = (includeExpired = false) =>
   get('/confirmations/pending', { include_expired: includeExpired })

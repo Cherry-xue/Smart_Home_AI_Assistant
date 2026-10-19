@@ -515,4 +515,8 @@ CREATE TABLE IF NOT EXISTS `audit_events` (
 --   知识 8 张：knowledge_documents / knowledge_chunks / memories / suggestions /
 --              disturbance_rules / conversations / agent_runs / audit_events
 --   合计 24 张
+--
+--   另有 05_chat_history.sql 建的 chat_messages（历史会话正文），
+--   合计 25 张。它单独成文件是因为本脚本早已在库里执行过，
+--   往里加表会让"执行过一次"与"刚建库"两条路走岔。
 -- ============================================================================

@@ -112,7 +112,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { pickKeyMetrics, keyMetricLine } from '@/utils/format'
+import { pickKeyMetrics, keyMetricLine, metricText } from '@/utils/format'
 import {
   AREAS as DEFAULT_AREAS,
   DOORS,
@@ -219,24 +219,26 @@ function showData(a) {
   return a.h >= upx(34)
 }
 
-onMounted(() => {
+/**
+ * 量一次真实缩放比。
+ * ⚠️ 必须在 onMounted 里**同步**调一次：`ResizeObserver` 的回调是异步的，
+ *    只靠它的话首帧 `planScale` 还是初始值 1，带底图的户型（真实 0.32）
+ *    会先按"很宽"算一遍读数、画出两个指标，下一帧才跳回一个 —— 肉眼就是闪一下。
+ */
+function measure() {
   if (!wrapEl.value) return
-  ro = new ResizeObserver(([entry]) => {
-    const { width, height } = entry.contentRect
-    if (!width || !height) return
-    planScale.value = Math.min(width / viewBox.value.w, height / viewBox.value.h) || 1
-  })
+  const { width, height } = wrapEl.value.getBoundingClientRect()
+  if (!width || !height) return
+  planScale.value = Math.min(width / viewBox.value.w, height / viewBox.value.h) || 1
+}
+
+onMounted(() => {
+  measure()
+  ro = new ResizeObserver(measure)
   ro.observe(wrapEl.value)
 })
 onBeforeUnmount(() => ro?.disconnect())
-watch(viewBox, () => {
-  // 换户型（画布尺寸变了）之后重新量一次缩放比，否则字号会突然变大/变小
-  if (!wrapEl.value) return
-  const { width, height } = wrapEl.value.getBoundingClientRect()
-  if (width && height) {
-    planScale.value = Math.min(width / viewBox.value.w, height / viewBox.value.h) || 1
-  }
-})
+watch(viewBox, measure)
 
 // ---- 选中态 ----------------------------------------------------------------
 const selectedArea = computed(() =>
@@ -337,39 +339,45 @@ function areaStyle(a) {
 const segsOf = (a) => SEGMENTS.value[a.code] ?? []
 
 // ---- 房间里那行小字 --------------------------------------------------------
-// ⚠️ 必须按房间宽度截断：玄关/卫生间很窄，两三个指标一拼就会**溢出房间边界**。
+// ⚠️ 必须按房间宽度截断：玄关/卫生间/阳台很窄，两个指标一拼就会**溢出房间边界**。
+//
+// ⚠️⚠️ 单位陷阱（这正是"一套逻辑、两套房表现不同"的根源）：
+//    `a.w` 是 **viewBox 用户坐标**，而这行字的字号是 **屏幕像素**（px(11)）。
+//    两者之间差一个 `planScale`。带底图的户型 viewBox 就是底图原图像素
+//    （2358×1668），塞进 760px 的容器后缩放比只有 ≈0.32 —— 不乘这个系数，
+//    可用宽度会被高估 3 倍多，于是 72px 宽的阳台也判定"放得下两个指标"，
+//    文字直接压出房间边框。手绘户型（viewBox 900×600）缩放比≈0.9，所以看着正常。
 function textUnits(s) {
   let u = 0
   for (const ch of s) u += /[\u3000-\u9fff\uff00-\uffef]/.test(ch) ? 1 : 0.56
   return u
 }
 
-function fitText(s, availUnits) {
-  if (textUnits(s) <= availUnits) return s
-  let out = ''
-  let u = 0
-  for (const ch of s) {
-    const cu = /[\u3000-\u9fff\uff00-\uffef]/.test(ch) ? 1 : 0.56
-    if (u + cu > availUnits - 0.9) break
-    out += ch
-    u += cu
-  }
-  return `${out}…`
+/** 这间房的读数行最多能放多少"字宽"（一个中文字 = 1）。 */
+function availUnits(a) {
+  const s = planScale.value || 1
+  // 左右各留 7 屏幕像素内边距，再除以 11 屏幕像素字号
+  return Math.max(0, (a.w * s - 14) / 11)
 }
 
-/** 窄房间只放 1 个指标，宽房间放 2 个。 */
+/** 放得下两个指标就放两个，放不下退一个，连一个都放不下就只留数值。 */
 function dataLineFor(a) {
   const room = props.roomsByCode[a.code]
   if (!room) return '—'
-  const avail = (a.w - 16) / 11 // 11 是这一行的屏幕字号
-  const want = avail >= 11 ? 2 : 1
-  const picked = pickKeyMetrics(room.key_metrics, want)
+  const avail = availUnits(a)
+  const picked = pickKeyMetrics(room.key_metrics, 2)
   if (!picked.length) return '无数据'
-  const full = picked.map(keyMetricLine).join(' · ')
-  if (textUnits(full) <= avail) return full
-  // 拼两个太宽就退回一个
+
+  const two = picked.map(keyMetricLine).join(' · ')
+  if (picked.length > 1 && textUnits(two) <= avail) return two
+
   const one = keyMetricLine(picked[0])
-  return fitText(textUnits(one) <= avail ? one : full, avail)
+  if (textUnits(one) <= avail) return one
+
+  // 连「亮度 29 %」都塞不下（阳台这种窄条）：只留数值，标签省掉 ——
+  // 房间名已经写明是哪间房，截成「亮度…」既占地方又没有信息量。
+  const only = metricText(picked[0].metric_code, picked[0].value, picked[0].unit)
+  return textUnits(only) <= avail ? only : ''
 }
 </script>
 

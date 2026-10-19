@@ -478,7 +478,7 @@ def build_execute_node(ctx: Any, *, only_high_risk: bool):
         decisions = state.get("decisions") or []
 
         if only_high_risk:
-            return _settle_high_risk(state, plan, decisions, started)
+            return _settle_high_risk(state, plan, decisions, started, home_catalog)
         else:
             targets = [a for a in plan.actions if not a.high_risk_device]
             if not targets:
@@ -548,19 +548,21 @@ def build_execute_node(ctx: Any, *, only_high_risk: bool):
 
 
 def _settle_high_risk(
-    state: AgentState, plan: ScenePlan, decisions: list[Any], started: float
+    state: AgentState, plan: ScenePlan, decisions: list[Any], started: float, catalog: Any
 ) -> dict:
-    """把人工决定落到**已经存在**的待确认指令上。
+    """把人工决定落到**已经存在**的待确认指令上，并在批准后真的下发。
 
     ⚠️ 这里刻意**不调用 `execute_plan`**：
     待确认指令在 `confirm_gate` 中断前就已经落库了（`_persist_pending`），
     再走一遍执行会变成"批准一次、插两条指令"，手机端就会看到重复的待办。
+    所以直接调 `executor.dispatch_confirmed()` —— 它只更新**既有那一行**的状态
+    （`pending_confirm → confirmed → executed`）并下发这一次。
 
-    而"批准"能做的事也只有留痕 —— 红线规定高风险设备**永不自动执行**
-    （`HIGH_RISK_AUTO_EXEC=false`），所以批准后的状态仍然是 `pending_confirm`，
-    只是补上了 `confirmed_at` 与说明。真正的动作仍须人到现场或走授权通道。
+    ⚠️ 红线：自动路径永远走不到这里。只有人在待确认列表里点了批准，
+    `resume(decisions)` 才会让图走到这个节点。
     """
     from app.models.orm import DeviceCommand
+    from app.services.scenes import executor as scene_executor
 
     high_risk = [a for a in plan.actions if a.high_risk_device]
     if not high_risk:
@@ -569,7 +571,8 @@ def _settle_high_risk(
     interventions = state.get("interventions") or []
     notes: list[str] = []
     still_pending: list[StepOutcome] = []
-    now = dt.datetime.now()
+    approved_done: list[StepOutcome] = []
+    approved_failed: list[StepOutcome] = []
 
     try:
         db = _session_factory()()
@@ -580,15 +583,37 @@ def _settle_high_risk(
                 row = db.get(DeviceCommand, cmd_id) if cmd_id else None
 
                 if choice in _APPROVE_TOKENS:
-                    notes.append(
-                        f"已人工确认「{outcome.device_name} {outcome.capability}」；"
-                        "⚠️ 高风险动作不会自动执行，实际动作需人工或授权通道完成"
+                    device = catalog.get(outcome.device_code)
+                    if row is None or device is None:
+                        outcome.status = "failed"
+                        outcome.error = "找不到对应的指令记录或设备"
+                        approved_failed.append(outcome)
+                        notes.append(
+                            f"批准「{outcome.device_name} {outcome.capability}」失败："
+                            "找不到指令记录或设备，未下发"
+                        )
+                        continue
+                    ok, err = scene_executor.dispatch_confirmed(
+                        db, device,
+                        command_id=row.id,
+                        capability=outcome.capability,
+                        value=outcome.value,
                     )
-                    still_pending.append(outcome)
-                    if row is not None:
-                        row.confirmed_at = now
-                        row.result_message = (
-                            "已人工确认；高风险动作不自动执行（HIGH_RISK_AUTO_EXEC=false）"
+                    if ok:
+                        outcome.status = "executed"
+                        outcome.error = None
+                        approved_done.append(outcome)
+                        notes.append(
+                            f"已批准并下发「{outcome.device_name} {outcome.capability}」，"
+                            "设备状态以回执为准"
+                        )
+                    else:
+                        outcome.status = "failed"
+                        outcome.error = err
+                        approved_failed.append(outcome)
+                        notes.append(
+                            f"已批准「{outcome.device_name} {outcome.capability}」，"
+                            f"但下发失败：{err}"
                         )
                 elif choice:
                     notes.append(
@@ -596,6 +621,7 @@ def _settle_high_risk(
                     )
                     if row is not None:
                         row.status = "rejected"
+                        row.confirmed_at = dt.datetime.now()
                         row.result_message = "人工驳回"
                 else:
                     notes.append(
@@ -612,19 +638,26 @@ def _settle_high_risk(
         notes.append(f"回写人工决定失败：{type(e).__name__}: {e}")
 
     detail = (
-        f"高风险动作：{len(high_risk)} 项待确认 → 批准后仍需人工执行 {len(still_pending)} 项"
-        f"（共 {len([d for d in decisions])} 条决定）"
+        f"高风险动作 {len(high_risk)} 项：批准下发 {len(approved_done)}，"
+        f"下发失败 {len(approved_failed)}，仍待确认 {len(still_pending)}"
+        f"（共 {len(list(decisions))} 条决定）"
     )
 
     prev = state.get("run_result") or {}
     merged = {
-        "status": _merge_status(prev.get("status"), "success"),
+        "status": _merge_status(prev.get("status"), "failed" if approved_failed else "success"),
         "run_id": prev.get("run_id"),
-        "executed": list(prev.get("executed", [])),
+        "executed": [
+            *prev.get("executed", []),
+            *[s.as_dict() for s in approved_done],
+        ],
         "pending_confirm": [
             *prev.get("pending_confirm", []), *[s.as_dict() for s in still_pending]
         ],
-        "failed": list(prev.get("failed", [])),
+        "failed": [
+            *prev.get("failed", []),
+            *[s.as_dict() for s in approved_failed],
+        ],
         "notes": [*prev.get("notes", []), *notes],
     }
     return {

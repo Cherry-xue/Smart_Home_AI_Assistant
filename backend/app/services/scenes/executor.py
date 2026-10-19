@@ -25,6 +25,7 @@ import dataclasses
 import datetime as dt
 import logging
 import time
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -125,6 +126,69 @@ def _send_with_retry(
             if attempt < MAX_ATTEMPTS:
                 time.sleep(RETRY_DELAY_SEC)
     return False, last_error, MAX_ATTEMPTS
+
+
+def dispatch_confirmed(
+    db: Session,
+    device: DeviceInfo,
+    *,
+    command_id: int,
+    capability: str,
+    value: Any,
+) -> tuple[bool, str]:
+    """**人工已批准**的高风险指令下发 —— 全链路唯一允许高风险设备动起来的地方。
+
+    ⚠️ 红线边界（别搞混，两条都要守住）：
+    - 自动路径（场景执行、Agent 编排、批量动作）**永远**不会执行高风险动作：
+      `execute_plan()` 走到 `outcome.high_risk_device` 就 `continue`，
+      `create_command()` 还会把状态强制改回 `pending_confirm`；
+    - 只有「人在待确认列表里点了批准」才调这个函数
+      （`api/confirmations.py` 的 manual 分支、`agent/nodes.py::_settle_high_risk`）。
+    即：高风险动作 = **只能人工授权后执行，绝不自动执行**。
+
+    状态流转按建表注释的约定走 `pending_confirm → confirmed → executed`，
+    中间那次 commit 是**留痕**：万一 MQTT 发不出去，库里能看出"人已经批了，但没发成功"，
+    而不是糊成一个 failed 看不出来是卡在哪一步。
+    """
+    row = db.get(DeviceCommand, command_id)
+    if row is None:
+        return False, f"指令记录 {command_id} 不存在"
+
+    row.status = "confirmed"
+    row.confirmed_at = dt.datetime.now()
+    row.result_message = "人工已批准，准备下发"
+    db.commit()
+
+    last_error = ""
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            mqtt_publisher.publish_command(
+                home_id=device.home_id,
+                room_code=device.room_code,
+                device_code=device.code,
+                capability=capability,
+                value=value,
+                command_id=command_id,
+                issued_by="human",
+            )
+            row.status = "executed"
+            row.executed_at = dt.datetime.now()
+            row.result_message = "人工已批准，指令已下发；设备状态以回执为准"
+            db.commit()
+            log.info("人工批准后下发成功：%s.%s=%r（command_id=%s）",
+                     device.code, capability, value, command_id)
+            return True, ""
+        except Exception as e:  # noqa: BLE001
+            last_error = f"{type(e).__name__}: {e}"
+            log.warning("人工批准后下发失败（第 %d/%d 次）：%s —— %s",
+                        attempt, MAX_ATTEMPTS, device.code, last_error)
+            if attempt < MAX_ATTEMPTS:
+                time.sleep(RETRY_DELAY_SEC)
+
+    row.status = "failed"
+    row.result_message = f"人工已批准，但下发失败：{last_error}"
+    db.commit()
+    return False, last_error
 
 
 def execute_plan(

@@ -523,11 +523,32 @@ class AuditEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
 
 
+class ChatMessage(Base):
+    """对话消息（历史会话回放的正文）。
+
+    `conversations` 只记会话本身、`agent_runs` 只记执行元数据，两边都没有正文，
+    所以大屏右侧的「历史会话」需要这张表才能把上一轮问答原样还原。
+    """
+
+    __tablename__ = "chat_messages"
+    __table_args__ = {"comment": "对话消息（历史会话回放）"}
+
+    id: Mapped[int] = mapped_column(PK, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[int] = mapped_column(FK)
+    thread_id: Mapped[str] = mapped_column(String(64))
+    role: Mapped[str] = mapped_column(mysql.ENUM("user", "assistant"))
+    content: Mapped[str | None] = mapped_column(mysql.MEDIUMTEXT)
+    sections: Mapped[dict | None] = mapped_column(JSON)
+    trace: Mapped[list | None] = mapped_column(JSON)
+    interrupted: Mapped[bool] = mapped_column(Boolean, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
+
+
 #: 全部模型（供 schema_check 与 metadata 使用）
 ALL_MODELS = [
     Home, Room, Member, User, UserRole, Device, DeviceCapability, MemberPreference,
     DeviceReading, EnergyReading, DeviceCommand, Scene, SceneRun, SensorEvent,
     Alarm, CareObservation,
     KnowledgeDocument, KnowledgeChunk, Memory, Suggestion, DisturbanceRule,
-    Conversation, AgentRun, AuditEvent,
+    Conversation, AgentRun, AuditEvent, ChatMessage,
 ]

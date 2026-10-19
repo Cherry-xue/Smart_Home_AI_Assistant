@@ -114,7 +114,7 @@
           </el-descriptions-item>
           <el-descriptions-item label="高风险">
             <span class="tag" :class="current.high_risk ? 'tag--high-risk' : ''">
-              {{ current.high_risk ? '是（永不自动执行）' : '否' }}
+              {{ current.high_risk ? '是（需手动确认后执行）' : '否' }}
             </span>
           </el-descriptions-item>
           <el-descriptions-item label="允许自动执行">
@@ -252,7 +252,7 @@
       <p v-if="selectedPreset?.note" class="dlg-note">{{ selectedPreset.note }}</p>
 
       <p v-if="selectedPreset?.high_risk" class="dlg-warn">
-        ⚠️ 高风险设备：加进来之后，任何指令都只会生成<b>待确认项</b>，永不自动执行。
+        ⚠️ 高风险设备：加进来之后，任何指令都只会先生成<b>待确认项</b>，需要手动确认后才下发。
         这条不可配置 —— 危险等级由设备类型决定，界面设置不了。
       </p>
 

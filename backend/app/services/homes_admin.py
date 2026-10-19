@@ -206,6 +206,12 @@ def delete_home(db: Session, home_id: int) -> dict[str, Any]:
     # ---- 直接按 home_id 挂着的表 ----
     counts["suggestions"] = _del("DELETE FROM suggestions WHERE home_id = :h")
     counts["memories"] = _del("DELETE FROM memories WHERE home_id = :h")
+    # 对话正文（chat_messages）挂在会话下面，没有外键，得先按 thread_id 清掉，
+    # 否则删完套房会留下一堆没人认领的历史消息
+    _del(
+        "DELETE FROM chat_messages WHERE thread_id IN "
+        "(SELECT thread_id FROM conversations WHERE home_id = :h)"
+    )
     counts["conversations"] = _del("DELETE FROM conversations WHERE home_id = :h")
     counts["disturbance_rules"] = _del("DELETE FROM disturbance_rules WHERE home_id = :h")
     _del("DELETE FROM scenes WHERE home_id = :h")

@@ -9,7 +9,7 @@
         </span>
       </div>
       <div class="ts-right">
-        <el-button size="small" :disabled="!messages.length" @click="newSession">新会话</el-button>
+        <span class="muted tiny">历史会话 {{ sessions.length }} 个</span>
       </div>
     </div>
 
@@ -35,12 +35,16 @@
             <div v-else class="bubble ai-bubble">
               <!-- 执行过程：流式到达时逐步增长 -->
               <div v-if="m.trace.length" class="trace">
-                <span class="trace-label">
-                  {{ m.streaming ? '执行中' : `已完成 ${m.trace.length} 步` }}
-                </span>
                 <el-collapse v-if="m.trace.length" class="trace-collapse">
                   <el-collapse-item>
-                    <template #title><span class="tc-title">查看执行过程</span></template>
+                    <!-- 两段文字都放进标题插槽：Element 的 header 本身是 flex + align-items:center，
+                         这样"已完成 N 步"和"查看执行过程"天然按中线对齐，不用两头各算一遍行高 -->
+                    <template #title>
+                      <span class="trace-label">
+                        {{ m.streaming ? '执行中' : `已完成 ${m.trace.length} 步` }}
+                      </span>
+                      <span class="tc-title">查看执行过程</span>
+                    </template>
                     <div v-for="(t, i) in m.trace" :key="i" class="trace-item">
                       <span class="ti-node mono">{{ t.node }}</span>
                       <span class="ti-label">{{ t.label }}</span>
@@ -87,7 +91,8 @@
         </div>
 
         <!-- ==================== 输入区 ==================== -->
-        <div class="composer">
+        <!-- `page-slide`：切页时离开下沉、进入从下方升起（与知识库页一致） -->
+        <div class="composer page-slide">
           <el-input
             v-model="input"
             type="textarea"
@@ -113,33 +118,40 @@
         </div>
       </section>
 
-      <!-- ==================== 侧栏：待确认 ==================== -->
-      <aside class="panel side">
-        <header class="sec-head">
-          <h3 class="sec-title">待确认事项</h3>
-          <span v-if="pendingCount" class="chip chip--warn">{{ pendingCount }}</span>
-        </header>
+      <!-- ==================== 历史会话 ==================== -->
+      <aside class="panel side page-slide-right">
+        <el-button class="new-btn" @click="newSession">新会话</el-button>
 
-        <p v-if="!pendingCount" class="empty">当前没有待确认事项</p>
+        <div class="hist-list">
+          <p v-if="!sessions.length" class="empty">
+            还没有历史会话。<br />说一句话，这里就会留下记录。
+          </p>
 
-        <InterventionCard
-          v-for="(item, i) in pending"
-          :key="`${item.thread_id}-${i}`"
-          :item="item"
-          :index="i"
-          @decided="onDecided"
-        />
+          <div
+            v-for="s in sessions"
+            :key="s.thread_id"
+            class="hist-item"
+            :class="{ 'hist-item--active': s.thread_id === threadId }"
+            @click="openSession(s)"
+          >
+            <div class="hi-title">{{ s.title }}</div>
+            <div class="hi-meta muted tiny tnum">
+              {{ fmtDateTime(s.last_at) }} · {{ s.message_count }} 条
+            </div>
+          </div>
+        </div>
       </aside>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { chatStream } from '@/api'
+import { chatStream, listChatMessages, listChatSessions } from '@/api'
 import { useHomeStore } from '@/stores/home'
 import { useSystemStore } from '@/stores/system'
+import { fmtDateTime } from '@/utils/format'
 import AnswerSections from '@/components/AnswerSections.vue'
 import InterventionCard from '@/components/InterventionCard.vue'
 
@@ -160,8 +172,13 @@ const messages = ref([])
 const msgBox = ref(null)
 const threadId = ref(newThreadId())
 
-const pending = computed(() => system.pending ?? [])
-const pendingCount = computed(() => pending.value.length)
+// 确认只在两处出现：聊天流里的卡片 + 顶栏「消息」抽屉。
+// 右侧那栏改成了「历史会话」（原来放待确认事项，与聊天流重复）。
+
+/** 历史会话列表（最近说过的排前面） */
+const sessions = ref([])
+/** 正在回放的会话，避免重复点同一个反复请求 */
+const loadingSession = ref('')
 
 const RUN_STATUS_LABEL = {
   success: '已完成',
@@ -189,6 +206,58 @@ function newSession() {
   threadId.value = newThreadId()
   messages.value = []
   input.value = ''
+}
+
+/** 拉一次历史会话列表。失败只提示，不打断对话（历史是附加信息）。 */
+async function loadSessions() {
+  try {
+    sessions.value = await listChatSessions(home.currentId)
+  } catch {
+    /* 静默：列表拉不到不影响发消息 */
+  }
+}
+
+/** 后端一条消息 → 页面气泡。字段名两侧不同，集中在这里转换，别散在模板里 */
+function toMessage(row) {
+  if (row.role === 'user') {
+    return { id: `h${seq++}`, role: 'user', text: row.content }
+  }
+  return {
+    id: `h${seq++}`,
+    role: 'assistant',
+    threadId: threadId.value,
+    streaming: false,
+    trace: row.trace ?? [],
+    sections: row.sections ?? {},
+    // 历史消息里的待确认早就处理过了，不再画确认卡（避免又点一次）
+    interventions: [],
+    answer: row.content ?? '',
+    runResult: null,
+    error: '',
+  }
+}
+
+/** 点开一条历史会话：切 thread_id 并回放消息。 */
+async function openSession(s) {
+  if (streaming.value) {
+    ElMessage.warning('正在回答，等这一轮结束再切换会话')
+    return
+  }
+  if (s.thread_id === threadId.value && messages.value.length) return
+  if (loadingSession.value) return
+
+  loadingSession.value = s.thread_id
+  threadId.value = s.thread_id
+  messages.value = []
+  try {
+    const rows = await listChatMessages(s.thread_id)
+    messages.value = rows.map(toMessage)
+    scrollBottom()
+  } catch (e) {
+    ElMessage.error(`读取历史会话失败：${e.message}`)
+  } finally {
+    loadingSession.value = ''
+  }
 }
 
 function useQuick(q) {
@@ -241,6 +310,8 @@ async function send() {
     sending.value = false
     abortFn = null
     await system.refreshPending()
+    // 这一轮已经落库，刷新列表让新会话（或标题）立刻出现在右侧
+    await loadSessions()
     scrollBottom()
   }
 }
@@ -317,7 +388,20 @@ async function onDecided({ choice, out }) {
   scrollBottom()
 }
 
-onMounted(() => system.refreshPending())
+onMounted(() => {
+  system.refreshPending()
+  loadSessions()
+})
+
+// 历史会话是按套房存的。切套房后必须重拉列表，并把当前对话清空 ——
+// 否则会把 A 套房的上下文接着当成 B 套房在聊。
+watch(
+  () => home.currentId,
+  () => {
+    newSession()
+    loadSessions()
+  },
+)
 </script>
 
 <style scoped>
@@ -359,18 +443,30 @@ onMounted(() => system.refreshPending())
   gap: 10px;
 }
 
+/* 左：对话区；右：历史会话。待确认事项不再单开一栏（聊天流里已经有了） */
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 220px;
   gap: var(--gap);
   flex: 1;
   min-height: 0;
 }
 
+@media (max-width: 1280px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .side {
+    display: none;
+  }
+}
+
 /* ---------------- 对话区 ---------------- */
 .chat-main {
   display: flex;
+  flex: 1;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -426,17 +522,53 @@ onMounted(() => system.refreshPending())
 }
 
 /* ---------------- 执行过程 ---------------- */
+/* 整块（左侧「已完成 N 步」+ 右侧折叠区）共用一块底、一道边框。
+   以前折叠区是 Element 自带的白底，左边那段却露着气泡的浅灰底，
+   一块区域切出两种颜色，很难看。 */
 .trace {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  padding: 6px 10px;
   font-size: var(--fs-small);
+  color: var(--c-ink-soft);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: 2px;
+}
+.trace-label {
   color: var(--c-ink-soft);
 }
 .trace-collapse {
-  flex: 1;
   border: none;
+  background: transparent;
+}
+/* 抹平 Element Plus 折叠面板自带的白底与上下分隔线，底部只留 .trace 那一道边框 */
+.trace-collapse :deep(.el-collapse-item__header),
+.trace-collapse :deep(.el-collapse-item__wrap) {
+  background: transparent;
+  border-bottom: none;
+}
+/* Element Plus 用的是 min-height: 48px（不是 height），只写 height:auto 压不下来。
+   header 自带 `display:flex; align-items:center`，两段文字放进去就是按中线对齐的 */
+.trace-collapse :deep(.el-collapse-item__header) {
+  height: 20px;
+  min-height: 20px;
+  line-height: 20px;
+  padding: 0;
+  gap: 8px;
+}
+/* 标题插槽外面还包了一层 `.el-collapse-item__title`（默认 `flex:auto` 的行内盒），
+   两段文字在里面是按基线排的 —— 字号一大一小就成了"底部对齐"。改成 flex 才按中线对齐 */
+.trace-collapse :deep(.el-collapse-item__title) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* 箭头保持贴右（默认是 `margin: 0 8px 0 auto`，只改左外边距会把箭头拽到标题旁边） */
+.trace-collapse :deep(.el-collapse-item__arrow) {
+  margin: 0 0 0 auto;
+}
+.trace-collapse :deep(.el-collapse-item__content) {
+  padding-bottom: 0;
 }
 .tc-title {
   font-size: var(--fs-tiny);
@@ -503,30 +635,48 @@ onMounted(() => system.refreshPending())
   margin-right: auto;
 }
 
-/* ---------------- 侧栏 ---------------- */
+/* ---------------- 历史会话 ---------------- */
 .side {
-  overflow-y: auto;
-}
-.sec-head {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
 }
-.sec-title {
-  margin: 0;
-  font-size: var(--fs-body);
-  font-weight: 600;
+.new-btn {
+  width: 100%;
 }
-.chip {
-  padding: 1px 7px;
-  border: 1px solid var(--c-line);
-  font-size: var(--fs-tiny);
-  color: var(--c-ink-soft);
+.hist-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* 滚动条贴到面板内边距上，不压住卡片内容 */
+  margin-right: -6px;
+  padding-right: 6px;
 }
-.chip--warn {
-  border-color: var(--c-warn);
-  color: var(--c-warn);
+.hist-item {
+  padding: 8px 9px;
+  border: 1px solid transparent;
+  border-bottom-color: var(--c-line-soft);
+  cursor: pointer;
+  transition: background 120ms var(--ease);
+}
+.hist-item:hover {
+  background: var(--c-surface-hover);
+}
+.hist-item--active {
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+}
+.hi-title {
+  font-size: var(--fs-small);
+  color: var(--c-ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.hi-meta {
+  margin-top: 3px;
 }
 
 .mono {
@@ -534,14 +684,5 @@ onMounted(() => system.refreshPending())
 }
 .tnum {
   font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 1280px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .side {
-    display: none;
-  }
 }
 </style>

@@ -54,7 +54,7 @@
       <div class="topbar-right">
         <button class="round-btn" :title="msgTitle" @click="drawer = true">
           <span>消息</span>
-          <i v-if="system.pendingCount > 0" class="dot">{{ system.pendingCount }}</i>
+          <i v-if="pendingItems.length > 0" class="dot">{{ pendingItems.length }}</i>
         </button>
       </div>
     </header>
@@ -120,7 +120,7 @@
 
     <!-- ==================== 消息 ==================== -->
     <el-drawer v-model="drawer" title="消息" size="380px" direction="rtl">
-      <div v-if="system.pendingCount === 0" class="msg-empty">
+      <div v-if="pendingItems.length === 0" class="msg-empty">
         <p>暂无待处理消息。</p>
         <p class="muted">
           需要人工确认的高风险动作（门锁 / 燃气阀 / 电气总闸）会出现在这里。
@@ -128,7 +128,7 @@
       </div>
 
       <div v-else class="msg-list">
-        <div v-for="(item, i) in system.pending" :key="`${item.thread_id}-${i}`" class="msg-item">
+        <div v-for="(item, i) in pendingItems" :key="`${item.thread_id}-${i}`" class="msg-item">
           <div class="msg-item-head">
             <strong>{{ item.device_name || item.device_code }}</strong>
             <span class="tag tag--warn">待确认</span>
@@ -139,12 +139,16 @@
             <template v-if="item.question"> · 来自「{{ item.question }}」</template>
           </div>
           <div class="msg-item-actions">
-            <button class="link-btn" :disabled="busy" @click="decide(item, 'approve')">批准（留痕）</button>
-            <button class="link-btn link-btn--muted" :disabled="busy" @click="decide(item, 'reject')">驳回</button>
+            <button class="link-btn link-btn--primary" :disabled="busy" @click="decide(item, 'approve')">
+              批准并下发
+            </button>
+            <button class="link-btn link-btn--boxed" :disabled="busy" @click="decide(item, 'reject')">
+              驳回
+            </button>
           </div>
         </div>
         <p class="muted msg-foot">
-          ⚠️ 批准的含义是「人工已确认并留痕」，**不会**让系统去执行门锁 / 燃气阀 / 总闸的动作。
+          ⚠️ 高风险动作**绝不自动执行**：只有你在这里点「批准并下发」，系统才会真正下发一次；驳回则作废。
         </p>
       </div>
     </el-drawer>
@@ -369,8 +373,21 @@ const navItems = [
 
 const anchorText = computed(() => fmtDateTime(system.dataAnchor))
 const modeLabel = computed(() => dataModeLabel(system.dataMode))
+
+// 与 AI 对话页侧栏同规则：按当前套房过滤 + 按 thread_id 重新编号
+// （`intervention_index` 是「同一会话内」的第几条，拿扁平列表下标当序号会指错人）
+const pendingItems = computed(() => {
+  const idx = {}
+  return (system.pending ?? [])
+    .filter((it) => it.home_id == null || it.home_id === home.currentId)
+    .map((it) => {
+      const k = it.thread_id ?? '_'
+      idx[k] = (idx[k] ?? -1) + 1
+      return { ...it, uiIndex: idx[k] }
+    })
+})
 const msgTitle = computed(() =>
-  system.pendingCount > 0 ? `${system.pendingCount} 条待确认` : '暂无待确认消息',
+  pendingItems.value.length > 0 ? `${pendingItems.value.length} 条待确认` : '暂无待确认消息',
 )
 
 async function refresh() {
@@ -387,7 +404,10 @@ async function refresh() {
 async function decide(item, choice) {
   busy.value = true
   try {
-    const out = await decidePending(item.thread_id, { choice, interventionIndex: 0 })
+    const out = await decidePending(item.thread_id, {
+      choice,
+      interventionIndex: item.uiIndex ?? 0,
+    })
     ElMessage({
       message: out?.message || (out?.accepted ? '已记录' : '该确认未被采纳'),
       type: out?.accepted ? 'success' : 'warning',
@@ -673,6 +693,32 @@ onUnmounted(() => system.stopPolling())
   font-size: var(--fs-small);
   color: var(--c-accent);
   text-decoration: underline;
+}
+/* 批准是这里唯一"会产生后果"的动作 —— 必须有实心按钮外观，
+   否则一行下划线文字看起来像普通链接，不像要点的东西 */
+.link-btn--primary {
+  padding: 4px 12px;
+  border: 1px solid var(--c-accent);
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.link-btn--primary:hover:not(:disabled) {
+  background: var(--c-accent);
+  color: var(--c-surface);
+}
+/* 驳回做成"空心框"，和批准的实心框一对：同样要看得出来是可点的按钮，
+   但视觉重量明显低于"批准并下发"（那才是会真的动手的那个） */
+.link-btn--boxed {
+  padding: 4px 12px;
+  border: 1px solid var(--c-line);
+  color: var(--c-ink-soft);
+  text-decoration: none;
+}
+.link-btn--boxed:hover:not(:disabled) {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
 }
 .link-btn--muted {
   color: var(--c-ink-muted);

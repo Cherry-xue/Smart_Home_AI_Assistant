@@ -5,9 +5,7 @@
       <span class="tag">{{ typeLabel(device.device_type) }}</span>
     </div>
 
-    <p v-if="device.high_risk" class="dev-risk">
-      高风险设备 —— 只会生成待确认项，永不自动执行
-    </p>
+    <p v-if="device.high_risk" class="dev-risk">高风险设备 - 需要手动确认</p>
     <p v-else-if="!device.online" class="dev-offline">设备离线，指令可能不会生效</p>
 
     <div v-for="cap in writableCaps" :key="cap.code" class="cap">
@@ -46,14 +44,36 @@
       </el-select>
 
       <!-- 数值型：⚠️ value_type 是 int / float，不是 number -->
-      <div v-else-if="isNumericCap(cap)" class="stepper">
-        <button class="step-btn" :disabled="busyKey === cap.code || !!controlChannelIssue" @click="apply(cap, nextStep(currentValue(cap.code), cap, -1))">
-          −
-        </button>
-        <span class="step-val tnum">{{ metricText(cap.code, currentValue(cap.code), cap.unit) }}</span>
-        <button class="step-btn" :disabled="busyKey === cap.code || !!controlChannelIssue" @click="apply(cap, nextStep(currentValue(cap.code), cap, +1))">
-          +
-        </button>
+      <div v-else-if="isNumericCap(cap)" class="num">
+        <!-- ⚠️ 拖动过程中只更新**本地**值，松手（change）才下发一条指令。
+             以前是"加减按钮点一下发一条"：把亮度从 20 调到 80 要发 12 条、
+             等 12 次设备回执，慢到没法用。现在一次定位、一次下发。 -->
+        <el-slider
+          class="num-slider"
+          :model-value="numValue(cap)"
+          :min="numRange(cap).min"
+          :max="numRange(cap).max"
+          :step="numRange(cap).step"
+          :disabled="busyKey === cap.code || !!controlChannelIssue"
+          @input="(v) => setWish(cap, v)"
+          @change="(v) => apply(cap, v)"
+        />
+        <!-- 可以直接敲一个数：回车 / 失焦下发一次。
+             ⚠️ 刻意不显示加减箭头（`controls="false"`）—— 箭头点一下就是一条指令，
+                又变回"一点点调、每一下都等回报"。 -->
+        <el-input-number
+          class="num-input"
+          :model-value="numValue(cap)"
+          :min="numRange(cap).min"
+          :max="numRange(cap).max"
+          :step="numRange(cap).step"
+          :controls="false"
+          size="small"
+          :disabled="busyKey === cap.code || !!controlChannelIssue"
+          @update:model-value="(v) => setWish(cap, v)"
+          @change="(v) => commitInput(cap, v)"
+        />
+        <span v-if="cap.unit" class="num-unit">{{ cap.unit }}</span>
       </div>
 
       <span v-else class="empty">暂不支持在此操作</span>
@@ -69,10 +89,10 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listDeviceCommands, sendDeviceCommand } from '@/api'
-import { isNumericCap, controlChannelIssue, nextStep, stripAck } from '@/utils/control'
+import { isNumericCap, controlChannelIssue, stepSize, stripAck } from '@/utils/control'
 import { metricLabel, metricText, typeLabel } from '@/utils/format'
 
 const props = defineProps({
@@ -88,10 +108,62 @@ const busyKey = ref('')
 /** 最近一条指令的状态：{ tone: ok|warn|bad|wait, text } */
 const lastCmd = ref(null)
 
-const writableCaps = computed(() => props.capabilities.filter((c) => c.writable))
+/** 设备关闭后就**没有意义**的能力：灯都关了还摆一个"亮度"滑块是自相矛盾的。 */
+const OFF_HIDES_CAP = { light: ['brightness', 'color_temp'] }
+
+/**
+ * 关灯后隐藏亮度。
+ *
+ * ⚠️ 只有设备**明确上报过关闭**才隐藏：刚上线的设备缓存里可能还没有 `power_on`，
+ *    这时不能猜，否则控制面板会莫名少一行。
+ */
+function capHidden(cap) {
+  const list = OFF_HIDES_CAP[props.device?.device_type]
+  if (!list?.includes(cap.code)) return false
+  return currentValue('power_on') === false
+}
+
+const writableCaps = computed(() =>
+  props.capabilities.filter((c) => c.writable && !capHidden(c)),
+)
 
 function currentValue(code) {
   return props.device?.latest?.[code]?.value ?? null
+}
+
+// ---- 数值型：本地"期望值" ------------------------------------------------
+// ⚠️ 为什么需要：项目红线是"只有真改了值才能说改了值"，所以界面上的设备值
+//    必须等回执。但滑块/输入框要**立刻反映用户自己拨到哪**，否则松手后滑块
+//    会弹回原值，看起来像没生效。于是单独存一份"我期望的值"，
+//    等设备回执到了（或确认失败）就删掉、换回设备真实值。
+const wish = reactive({})
+
+function numRange(cap) {
+  const min = Number(cap?.value_min ?? 0)
+  const max = Number(cap?.value_max ?? 100)
+  return { min, max, step: Number(cap?.value_step) || stepSize(cap) }
+}
+
+function numValue(cap) {
+  const w = wish[cap.code]
+  if (w != null) return Number(w)
+  const v = Number(currentValue(cap.code))
+  return Number.isFinite(v) ? v : numRange(cap).min
+}
+
+/** 拖动/输入过程中只记本地值，**不下发**。 */
+function setWish(cap, v) {
+  wish[cap.code] = v
+}
+
+/** 输入框里的数可能被清空（Element 会给 `null`）→ 不下发一条空指令，
+ *  把框推回原来的值就行。 */
+function commitInput(cap, v) {
+  if (v == null || !Number.isFinite(Number(v))) {
+    setWish(cap, numValue(cap))
+    return
+  }
+  apply(cap, v)
 }
 
 /**
@@ -135,6 +207,9 @@ async function refreshLast({ tries = 8, delayMs = 1500 } = {}) {
 
 async function apply(cap, value) {
   busyKey.value = cap.code
+  // 滑块松手 / 输入框回车才走到这里 → 立刻把用户拨到的位置显示出来
+  wish[cap.code] = value
+  let sent = false
   try {
     const out = await sendDeviceCommand(props.device.id, { capability: cap.code, value })
     // ⚠️ **不做乐观更新**：只有设备回报之后，界面上的值才会通过轮询改变。
@@ -144,7 +219,7 @@ async function apply(cap, value) {
       tone,
       text:
         out.status === 'pending_confirm'
-          ? '已生成待确认项（高风险，不会自动执行）'
+          ? '已生成待确认项，请到「消息」里手动确认'
           : out.status === 'failed'
             ? out.message
             : `已下发 ${out.capability_label} = ${metricText(cap.code, value, cap.unit)}，等待设备回报…`,
@@ -154,7 +229,14 @@ async function apply(cap, value) {
       type: out.status === 'pending_confirm' ? 'warning' : out.status === 'failed' ? 'error' : 'success',
       duration: out.status === 'executed' ? 2600 : 4200,
     })
-    if (out.status === 'executed') refreshLast()
+    if (out.status === 'executed') {
+      sent = true
+      // 回执到了（或等满 12 秒确认没回执）就丢掉期望值，换回设备真实上报的值 ——
+      // "我期望 80%"和"设备确实是 80%"是两件事，不能一直混着显示。
+      refreshLast().finally(() => {
+        delete wish[cap.code]
+      })
+    }
   } catch (e) {
     // ⚠️ 万一后端控制端点不在（路径被改/被删），置一个全局标记，
     //    让上层把整块面板变成只读并说明原因 —— 反复弹同一个错只会让人以为是偶发故障。
@@ -164,6 +246,8 @@ async function apply(cap, value) {
     ElMessage({ message: `下发失败：${e.message}`, type: 'error', duration: 4500 })
   } finally {
     busyKey.value = ''
+    // 没发出去 / 被拦下了（高风险待确认、失败）→ 不占着期望值，界面回到设备真实值
+    if (!sent) delete wish[cap.code]
   }
 }
 </script>
@@ -281,28 +365,28 @@ async function apply(cap, value) {
   width: 160px;
   flex: 0 0 auto;
 }
-/* ---- 数值步进 ---- */
-.stepper {
-  display: inline-flex;
+/* ---- 数值：滑杆 + 可直接输入 ---- */
+.num {
+  flex: 1;
+  display: flex;
   align-items: center;
-  border: 1px solid var(--c-line);
+  gap: 10px;
+  min-width: 0;
 }
-.step-btn {
-  width: 22px;
-  height: 22px;
-  line-height: 1;
-  color: var(--c-ink-soft);
+.num-slider {
+  flex: 1;
+  min-width: 0;
+  /* Element 的滑杆默认带 16px 上下留白，一屏放好几台设备时会撑得很散 */
+  margin: 0;
+  height: 20px;
 }
-.step-btn:hover:not(:disabled) {
-  color: var(--c-accent);
+.num-input {
+  flex: 0 0 64px;
+  width: 64px;
 }
-.step-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-.step-val {
-  min-width: 56px;
-  text-align: center;
+.num-unit {
+  flex: none;
   font-size: var(--fs-small);
+  color: var(--c-ink-muted);
 }
 </style>

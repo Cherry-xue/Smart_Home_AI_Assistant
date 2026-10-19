@@ -77,7 +77,11 @@ export const METRIC_LABEL = {
   co2: 'CO₂',
   tvoc: 'TVOC',
   power_on: '开关',
-  brightness: '亮度',
+  // ⚠️ 房间读数里的 `brightness` 一律叫「环境亮度」：
+  //    它表示"这间房现在有多亮"（由灯具营造），而不是"灯具自己调到多少"。
+  //    叫「亮度」会让人以为是灯具的档位，于是出现"灯明明关着、亮度还是 66%"的误解。
+  //    关灯后这个值不再展示（后端 `OFF_MEANS_NO_VALUE` 已过滤陈旧值）。
+  brightness: '环境亮度',
   color_temp: '色温',
   position: '开合度',
   mode: '模式',

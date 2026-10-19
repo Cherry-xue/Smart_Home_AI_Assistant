@@ -129,7 +129,10 @@ async def run(
 
     # 维护"哪些会话正等着人确认"的索引（手机端轮询用）
     if out["interrupted"]:
-        register_pending(thread_id, out["intervention"] or {}, extra={"question": question})
+        register_pending(
+            thread_id, out["intervention"] or {},
+            extra={"question": question, "home_id": home_id},
+        )
     else:
         clear_pending(thread_id)
 
@@ -197,14 +200,21 @@ async def stream(
         question, home_id=home_id, member_name=member_name, thread_id=thread_id
     )
 
+    # ⚠️ `__interrupt__` 只出现在流事件里，**不在 snapshot.values 里**。
+    # 所以必须在这里抓住它，才能在流结束后把这个会话登记进"待确认"索引；
+    # 只推给前端不登记的话，前端卡片画得出来，点「批准」却会 404（该会话没有待确认事项）。
+    interrupt_payload: dict[str, Any] | None = None
+
     try:
         async for chunk in g.astream(state, _config(thread_id), stream_mode="updates"):
             for node, payload in (chunk or {}).items():
                 if node == "__interrupt__":
                     item = payload[0] if isinstance(payload, (list, tuple)) else payload
+                    value = getattr(item, "value", item)
+                    interrupt_payload = value if isinstance(value, dict) else {"raw": value}
                     yield {
                         "type": "interrupt",
-                        "payload": getattr(item, "value", item),
+                        "payload": interrupt_payload,
                     }
                     continue
                 for entry in _trace_of(payload):
@@ -216,7 +226,24 @@ async def stream(
 
     snapshot = await g.aget_state(_config(thread_id))
     values = getattr(snapshot, "values", None) or {}
-    yield {"type": "final", "result": _normalize(values)}
+    out = _normalize(values)
+
+    # 用流里抓到的那份兜底：`_normalize(values)` 拿不到中断载荷
+    if interrupt_payload is not None:
+        out["interrupted"] = True
+        out["intervention"] = interrupt_payload
+        register_pending(
+            thread_id, interrupt_payload, extra={"question": question, "home_id": home_id}
+        )
+    elif out["interrupted"]:
+        register_pending(
+            thread_id, out["intervention"] or {},
+            extra={"question": question, "home_id": home_id},
+        )
+    else:
+        clear_pending(thread_id)
+
+    yield {"type": "final", "result": out}
 
 
 def _trace_of(payload: Any) -> list[dict[str, Any]]:

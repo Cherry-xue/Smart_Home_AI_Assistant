@@ -459,35 +459,38 @@ async def _layer3_async(ctx: ToolContext, ck: Checker, alive: bool) -> None:
     # broker 在线时 executed 里会有 3 个低风险动作，那是预期行为不是红线失守。
     hr_executed = [s for s in rr3.get("executed", []) if s.get("device_code") == "front_door_lock"]
     hr_pending = [s for s in rr3.get("pending_confirm", []) if s.get("device_code") == "front_door_lock"]
-    ck.check("🚨 即使批准，高风险仍只记为待确认（不自动执行）",
-             not hr_executed and len(hr_pending) >= 1,
+    # 红线口径已从"永不执行"精确成"**绝不自动执行，人工授权后才执行**"：
+    # 批准是授权通道，所以这里应该真的下发（executed）；没批准前必须一只都不动。
+    ck.check("批准后高风险动作真的被下发（人工授权通道生效）",
+             len(hr_executed) >= 1 and not hr_pending,
              f"门锁 executed={len(hr_executed)} pending={len(hr_pending)}"
              f"｜全部 executed={len(rr3.get('executed', []))}（含低风险）")
     ck.check("恢复后给出了最终回答", bool(out3["answer"]), out3["answer"][:50])
 
     rows3 = commands_since(base)
-    ck.check("批准没有产生任何 executed 指令",
-             all(r["status"] != "executed" for r in rows3 if r["device"] == "front_door_lock"),
-             f"新增 {len(rows3)} 条")
     ck.check("待确认索引已清除", get_pending(t2) is None)
 
-    # 批准只是给已存在的那一行留痕，不该再插一条（否则手机端会看到重复待办）
+    # 批准只是把已存在的那一行往下推（pending_confirm → confirmed → executed），
+    # 不该再插一条（否则手机端会看到重复待办）
     ck.check("批准是更新既有待确认项，而不是新增一条",
              len(rows3) == 0, f"新增 {len(rows3)} 条：{[r['device'] for r in rows3]}")
 
-    # 全库扫描：这台门锁**从来没有**被自动执行过
+    # 全库扫描红线的**现在形态**：高风险指令可以被执行，但每一条都必须有人工确认时间。
+    # 没有 confirmed_at 的 executed 就是"绕过人工确认自动执行了"——那才是真违规。
     with engine.connect() as conn:
         bad = conn.execute(
             text(
                 """
                 SELECT COUNT(*) FROM device_commands c
                 JOIN devices d ON d.id = c.device_id
-                WHERE d.high_risk = 1 AND c.status IN ('executed', 'confirmed')
+                WHERE d.high_risk = 1
+                  AND c.status IN ('executed', 'confirmed')
+                  AND c.confirmed_at IS NULL
                 """
             )
         ).scalar()
-    ck.check("🚨 全库校验：高风险设备无任何 executed/confirmed 指令", int(bad or 0) == 0,
-             f"违规 {bad} 条")
+    ck.check("🚨 全库校验：高风险指令凡执行必有人工确认时间", int(bad or 0) == 0,
+             f"无 confirmed_at 的已执行指令 {bad} 条")
     print()
 
     # ======================================================================
@@ -551,6 +554,22 @@ async def _layer3_async(ctx: ToolContext, ck: Checker, alive: bool) -> None:
     ck.check("事件顺序覆盖主干（路由→助手→汇总→编排→执行→确认）",
              "scene" in node_names and "plan" in node_names and "execute" in node_names,
              "→".join(str(n) for n in node_names))
+
+    # ⚠️ 回归点：流式中断必须同时登记进待确认索引。
+    # 只推 `interrupt` 事件不登记的话，前端卡片画得出来，点「批准」却会
+    # 404（该会话没有待确认事项）—— `__interrupt__` 不在 snapshot.values 里，
+    # 光靠最后的 `_normalize(values)` 是拿不到的。
+    tid6 = f"chk-stream-{RUN_TAG}"
+    final6 = next((e.get("result") or {} for e in events if e.get("type") == "final"), {})
+    ck.check("final 事件标记了 interrupted", bool(final6.get("interrupted")))
+    ck.check("final 事件带上了待确认载荷",
+             bool((final6.get("intervention") or {}).get("interventions")),
+             f"{len((final6.get('intervention') or {}).get('interventions') or [])} 条")
+    rec6 = runner.get_pending(tid6)
+    ck.check("流式中断后会话进了待确认索引（否则批准 404）", rec6 is not None)
+    ck.check("索引里的载荷带 interventions",
+             bool((rec6 or {}).get("payload", {}).get("interventions")))
+    runner.clear_pending(tid6)
 
 
 # ============================================================================

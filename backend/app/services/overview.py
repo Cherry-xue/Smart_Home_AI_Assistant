@@ -40,6 +40,17 @@ DEFAULT_OFFLINE_AFTER_SEC = 600.0
 #: 房间卡片上最多展示几个关键指标
 DEFAULT_KEY_METRIC_LIMIT = 4
 
+#: 设备关闭后就**不再有意义**的指标：指标名 → 它依赖的开关量。
+#:
+#: ⚠️ 为什么必须过滤：缓存存的是"每个指标的最后一次上报值"。灯关掉之后模拟器
+#: 不再上报 brightness，但缓存里还留着关灯前最后一次的值（可能已经过去几十分钟）。
+#: 直接展示就成了"灯关着，房间却还亮着 66%"这种自相矛盾的数据 ——
+#: 用户看到的第一反应是"这系统乱报"，而不是"这是旧值"。
+#: 所以开关明确为"关"时，这些指标一律不进房间读数。
+OFF_MEANS_NO_VALUE: dict[str, str] = {
+    "brightness": "power_on",
+}
+
 
 # ---------------------------------------------------------------- 内部工具
 def _latest_payload(cache: LatestValueCache, dev: DeviceInfo) -> dict[str, dict[str, Any]]:
@@ -144,9 +155,17 @@ def room_cards(
             observed = cache.observed_extent(dev.code)
             if observed is not None:
                 last_updates.append(observed)
-            for metric, lv in cache.device(dev.code).items():
+            latest = cache.device(dev.code)
+            for metric, lv in latest.items():
                 if metric not in KEY_METRIC_PRIORITY:
                     continue
+                # 灯关了还显示"亮度"，是缓存里留着关灯前的旧值（见 OFF_MEANS_NO_VALUE）
+                gate = OFF_MEANS_NO_VALUE.get(metric)
+                if gate:
+                    sw = latest.get(gate)
+                    # 只有设备**明确上报过关闭**才丢弃；没上报过开关量就不猜
+                    if sw is not None and sw.value in (False, 0, "off", "closed"):
+                        continue
                 candidates.append((KEY_METRIC_PRIORITY.index(metric), dev, metric, lv))
 
         candidates.sort(key=lambda item: item[0])
