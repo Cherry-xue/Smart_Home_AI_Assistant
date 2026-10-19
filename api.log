@@ -101,3 +101,7 @@ INFO:     127.0.0.1:60311 - "GET /api/confirmations/pending?include_expired=fals
 INFO:     127.0.0.1:60314 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
 INFO:     127.0.0.1:60316 - "GET /api/health HTTP/1.1" 200 OK
 INFO:     127.0.0.1:60315 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60399 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60400 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60402 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60401 - "GET /api/health HTTP/1.1" 200 OK
