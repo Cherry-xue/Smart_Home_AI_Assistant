@@ -60,7 +60,8 @@
             </div>
           </article>
 
-          <p v-if="!alarms.length" class="empty">近 24 小时没有告警</p>
+          <SkeletonList v-if="loading && !alarms.length" :rows="3" :bar-h="16" />
+          <p v-else-if="!alarms.length" class="empty">近 24 小时没有告警</p>
         </div>
       </section>
 
@@ -90,7 +91,8 @@
               <p class="tl-remark tiny muted">{{ o.remark }}</p>
             </li>
           </ul>
-          <p v-if="!observations.length" class="empty">暂无照护观察</p>
+          <SkeletonList v-if="loading && !observations.length" :rows="2" :bar-h="18" />
+          <p v-else-if="!observations.length" class="empty">暂无照护观察</p>
         </section>
 
         <section class="panel">
@@ -136,7 +138,8 @@
               </div>
             </article>
 
-            <p v-if="!suggestions.length" class="empty">暂时没有建议</p>
+            <SkeletonList v-if="loading && !suggestions.length" :rows="3" />
+            <p v-else-if="!suggestions.length" class="empty">暂时没有建议</p>
           </div>
         </section>
       </div>
@@ -156,11 +159,14 @@ import {
   listCareObservations,
   listSuggestions,
 } from '@/api'
+import SkeletonList from '@/components/SkeletonList.vue'
 import { useHomeStore } from '@/stores/home'
 import { fmtDateTime } from '@/utils/format'
 
 const home = useHomeStore()
-const loading = ref(false)
+// 初值 true：首帧就应该是"正在加载"的骨架，而不是"暂无数据"的空态。
+// 否则 300ms 淡入期间看到的是"没有告警/暂无观察"，数据到了再猛地换掉。
+const loading = ref(true)
 const busy = ref('')
 const anchor = ref(null)
 

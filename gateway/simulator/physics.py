@@ -29,6 +29,19 @@ ACTUATOR_TYPES = {
     "water_heater", "door_lock", "gas_valve", "main_breaker", "camera",
 }
 
+#: **接市电**的设备类型：总闸一断就失去供电，不再上报（界面显示离线）。
+#:
+#: ⚠️ 刻意**不包含**下面几类，这不是漏了，是真实电气语义：
+#:   - `door_lock` 门锁：电池供电。断电还必须能开，否则人被困在门里/门外；
+#:   - `gas_valve` 燃气阀：燃气压力 / 电池驱动，"关阀"本身是安全动作；
+#:   - `smoke_sensor` / `gas_sensor` / `door_sensor` / `mmwave_radar` / `temp_sensor` /
+#:     `water_leak_sensor` / `air_sensor`：全部电池供电。**消防与安防设备断电后
+#:     反而更要继续工作**，现实里的烟感也是带备电的；
+#:   - `main_breaker` 自己：总闸当然要有独立控制电源，否则断了自己合不回去。
+POWERED_TYPES = {
+    "light", "ac", "curtain", "tv", "speaker", "water_heater", "humidifier",
+}
+
 
 @dataclasses.dataclass
 class Sample:
@@ -326,6 +339,10 @@ class HomeSimulator:
         if dev is None:
             return False, f"未知设备 {device_code}"
 
+        # 断电的设备收不到指令 —— 如实拒绝，别回一个"已应用"骗后端。
+        if not self.is_powered(dev, now):
+            return False, f"{device_code} 无供电（总闸已断开），指令未执行"
+
         cap = dev.cap(capability)
         if cap is None:
             return False, f"设备没有能力 {capability}"
@@ -460,9 +477,30 @@ class HomeSimulator:
         return max(0.0, base + self.rng.gauss(0, base * 0.03 if base > 1 else 0.05))
 
     # ---------------------------------------------------------------- 采样
+    def _breaker_on(self, now: dt.datetime) -> bool:
+        """总闸是不是合着。没有总闸设备时按"有电"处理（老数据/别的户型也能跑）。"""
+        breaker = next((d for d in self.devices if d.device_type == "main_breaker"), None)
+        if breaker is None:
+            return True
+        state = self._active_override(breaker.code, now).get("power_state")
+        return str(state or "on") == "on"
+
+    def is_powered(self, dev: DeviceSpec, now: dt.datetime) -> bool:
+        """这台设备现在有没有电。
+
+        ⚠️ 断电的语义是"**不再上报**"，不是"上报一个 power_on=false"。
+        两者差别很大：前者后端会按 `received_at` 判成离线（界面显示"离线/无供电"），
+        后者看起来像"设备好好的，只是关着"—— 那是假的。
+        """
+        if dev.device_type not in POWERED_TYPES:
+            return True
+        return self._breaker_on(now)
+
     def sample(self, now: dt.datetime) -> list[Sample]:
         out: list[Sample] = []
         for dev in self.devices:
+            if not self.is_powered(dev, now):
+                continue  # 断电：一帧都不发，让后端自然判离线
             m, u = self._metrics(dev, now)
             if not m:
                 continue
@@ -474,12 +512,21 @@ class HomeSimulator:
         t = dev.device_type
         prof = self.p["device_types"].get(t, {})
         on = self.device_on(dev, now)
+        # 该设备当前生效的手动指令（没有就是空字典）。
+        # ⚠️ 门锁 / 电闸 / 燃气阀的状态**必须回读它**，否则回执照样说"已应用"，
+        #    下一秒采样又被推演值盖回去 —— 用户看到"锁不上、过一会儿自己变回来"。
+        ov = self._active_override(dev.code, now)
         indoor = self.p["indoor"]
         m: dict[str, object] = {}
         u: dict[str, str] = {}
 
         if t == "light":
             m["power_on"] = on
+            # ⚠️ 必须报 power_w：后端的能耗明细只认这个指标（`ingest._record_energy`）。
+            #    之前灯/电视/音箱都不报，于是能耗页只有空调和热水器在计量，
+            #    "近 24h 用电 0.17 kWh" 这种数字就是这么来的。
+            m["power_w"] = round(self.power_of(dev, now), 1)
+            u["power_w"] = "W"
             if on:
                 # ⚠️ 亮度是**设定值**，不是每帧随机的噪声。
                 #   ① 下发过调光指令 → 严格用指令值（`manual_overrides`，持久生效）；
@@ -510,6 +557,8 @@ class HomeSimulator:
             u["power_w"] = "W"
         elif t == "tv":
             m["power_on"] = on
+            m["power_w"] = round(self.power_of(dev, now), 1)
+            u["power_w"] = "W"
             if on:
                 # 音量同亮度：**设定值**，不是噪声
                 m["volume"] = dev.clamp(
@@ -519,6 +568,8 @@ class HomeSimulator:
                 u["volume"] = "%"
         elif t == "speaker":
             m["power_on"] = on
+            m["power_w"] = round(self.power_of(dev, now), 1)
+            u["power_w"] = "W"
             if on:
                 m["volume"] = dev.clamp(
                     "volume", self._steady_value(dev, "volume", now,
@@ -527,6 +578,8 @@ class HomeSimulator:
                 u["volume"] = "%"
         elif t == "humidifier":
             m["power_on"] = on
+            m["power_w"] = round(self.power_of(dev, now), 1)
+            u["power_w"] = "W"
             if on:
                 m["target_humidity"] = dev.clamp("target_humidity", prof["target_humidity"])
                 u["target_humidity"] = "%"
@@ -537,15 +590,17 @@ class HomeSimulator:
             u["target_temp"] = "℃"
             u["power_w"] = "W"
         elif t == "door_lock":
-            # 只在进出时段短暂解锁；其余时间保持锁定（高风险设备只上报状态，绝不执行）
+            # 没人下指令时：只在进出时段短暂解锁，其余时间锁定。
+            # 有人下过指令时：**指令说了算**（人工批准后必须真的保持住）。
             unlock = _in_window(now.time(), "08:00", "08:12") or _in_window(now.time(), "18:15", "18:27")
-            m["lock_state"] = "unlocked" if unlock else "locked"
+            m["lock_state"] = str(ov.get("lock_state") or ("unlocked" if unlock else "locked"))
         elif t == "main_breaker":
-            m["power_state"] = "on"
+            m["power_state"] = str(ov.get("power_state") or "on")
         elif t == "gas_valve":
-            # 常态开启。⚠️ 生成器【永远不】去"关闭"它——关阀是高风险动作，
-            # 只能由后端生成待确认建议，模拟器只负责上报当前阀门状态。
-            m["valve_state"] = "open"
+            # 没人下指令时：常态开启。⚠️ 生成器【永远不】主动去"关闭"它 ——
+            # 关阀是高风险动作，只能由后端生成待确认建议。
+            # 但**人工批准后的指令**必须如实执行并保持，否则就是"批了也白批"。
+            m["valve_state"] = str(ov.get("valve_state") or "open")
         elif t == "temp_sensor":
             m["temperature"] = round(dev.clamp("temperature", self.room_temp[dev.room_code]), 2)
             m["humidity"] = round(dev.clamp("humidity", self.room_humidity[dev.room_code]), 1)

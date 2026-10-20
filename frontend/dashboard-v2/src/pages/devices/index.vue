@@ -305,7 +305,9 @@ const system = useSystemStore()
 const all = ref([])
 const rooms = ref([])
 const home = useHomeStore()
-const loading = ref(false)
+// 初值 true：表格自带 v-loading 遮罩，但首帧若为 false 会先渲染
+// el-table 的"暂无数据"，随后才盖遮罩 —— 看起来就是"先没有、再冒出来"。
+const loading = ref(true)
 
 const filters = reactive({
   room: null,
@@ -345,8 +347,12 @@ function topMetrics(latest) {
     .map(([code, m]) => ({ code, label: metricLabel(code), text: metricText(code, m.value, m.unit) }))
 }
 
-async function load() {
-  loading.value = true
+/**
+ * @param silent 静默刷新（不显示骨架屏）。用于"批准了一条指令之后立刻重取"——
+ *   这时候数据几乎一定变了，没必要让整页先闪一下空白再回来。
+ */
+async function load({ silent = false } = {}) {
+  if (!silent) loading.value = true
   try {
     const hid = home.currentId
     const [dev, rm] = await Promise.all([
@@ -358,9 +364,13 @@ async function load() {
   } catch {
     all.value = []
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
+
+// 有人批准/驳回了指令 → 设备状态多半已经变了，立刻重取。
+// 之前只能干等 8 秒的定时轮询，看起来像"批准了没反应"。
+watch(() => system.deviceRevision, () => load({ silent: true }))
 
 // ---------------------------------------------------------------- 预设 / 增删
 const presets = ref([])

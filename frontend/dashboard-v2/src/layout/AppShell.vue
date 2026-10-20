@@ -70,6 +70,7 @@
             :to="item.path"
             class="nav-item"
             :class="{ 'nav-item--active': route.path === item.path }"
+            @mouseenter="warm(item.path)"
           >
             {{ item.title }}
           </RouterLink>
@@ -88,7 +89,8 @@
           <div class="sb-foot-value tnum">{{ anchorText }}</div>
           <div class="sb-foot-note">
             <span v-if="system.dataMode" class="tag">{{ modeLabel }}</span>
-            <span class="sb-foot-mode">{{ system.mqttConnected ? '链路正常' : '链路断开' }}</span>
+            <!-- 链路状态也做成一个框，与左边的数据源标签成对；正常浅绿、断开浅红 -->
+            <span class="tag" :class="linkState.cls">{{ linkState.text }}</span>
           </div>
           <div v-if="system.highRiskAutoExec" class="sb-foot-alert">
             ⚠️ 高风险自动执行已开启（违反红线）
@@ -209,6 +211,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { decidePending, getFloorplan, getRooms } from '@/api'
 import FloorplanEditor from '@/pages/overview/FloorplanEditor.vue'
+import { prefetchRoute } from '@/router/prefetch'
 import { useHomeStore } from '@/stores/home'
 import { useSystemStore } from '@/stores/system'
 import { dataModeLabel, fmtDateTime } from '@/utils/format'
@@ -217,6 +220,21 @@ const route = useRoute()
 const router = useRouter()
 const system = useSystemStore()
 const home = useHomeStore()
+
+/**
+ * 链路状态三态。
+ *
+ * ⚠️ 为什么不是简单的二态：`mock` / `csv` 模式**本来就不连 broker**，
+ * 若只看 `mqttConnected` 就会一直显示"链路断开"—— 明明是正常的本地模拟，
+ * 却报一个红色的错，比不显示更糟。
+ */
+const linkState = computed(() => {
+  if (system.mqttConnected) return { text: '链路正常', cls: 'tag--link-ok' }
+  if (system.dataMode === 'mock' || system.dataMode === 'csv') {
+    return { text: '无需链路', cls: 'tag--link-idle' }
+  }
+  return { text: '链路断开', cls: 'tag--link-bad' }
+})
 
 const drawer = ref(false)
 const busy = ref(false)
@@ -401,6 +419,22 @@ async function refresh() {
   })
 }
 
+/**
+ * 鼠标移到菜单上就预取。
+ *
+ * 比"点击时才预取"再早 200~500ms —— 用户从移动到点击通常正好这么久，
+ * 等于把整个等待期藏在了移动鼠标的动作里。
+ * 失败静默（页面自己还会请求一次）。
+ */
+function warm(path) {
+  try {
+    const name = router.resolve(path).name
+    prefetchRoute(name, home.currentId || 1)
+  } catch {
+    /* 路由解析失败不影响任何事 */
+  }
+}
+
 async function decide(item, choice) {
   busy.value = true
   try {
@@ -413,7 +447,10 @@ async function decide(item, choice) {
       type: out?.accepted ? 'success' : 'warning',
       duration: 3200,
     })
+    // 待确认列表 + 设备数据一起刷：批准之后设备可能**已经动了**，
+    // 只刷列表的话，当前页（总览/设备）还要等 8 秒轮询才显示新状态。
     await system.refreshPending()
+    system.bumpDevices({ again: true })
   } catch (e) {
     ElMessage.error(e.message)
   } finally {
@@ -634,12 +671,33 @@ onUnmounted(() => system.stopPolling())
 .sb-foot-note {
   margin-top: 6px;
   display: flex;
-  align-items: center;
-  gap: 6px;
+  /* 竖排 + 等宽：侧栏只有 170px，两个标签并排放不下（曾把"链路正常"挤成
+     "链路正 / 常"）。竖排后两个框同宽、文字居中，看起来是一组成对的状态块。 */
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
 }
-.sb-foot-mode {
-  font-size: var(--fs-tiny);
+
+.sb-foot-note .tag {
+  text-align: center;
+}
+/* 链路状态框：与左侧数据源标签同一尺寸，只换颜色 */
+.tag--link-ok {
+  border-color: #a7d8b8;
+  color: var(--c-good);
+  background: #f4fbf6;
+}
+
+.tag--link-bad {
+  border-color: #f0b4b4;
+  color: var(--c-danger);
+  background: #fdf4f4;
+}
+
+.tag--link-idle {
+  border-color: var(--c-line);
   color: var(--c-ink-muted);
+  background: transparent;
 }
 .sb-foot-alert {
   margin-top: 8px;

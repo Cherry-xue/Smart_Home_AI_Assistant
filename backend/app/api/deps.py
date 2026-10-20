@@ -22,6 +22,7 @@ __all__ = [
     "get_worker",
     "get_service",
     "get_tool_context",
+    "mqtt_link_down",
 ]
 
 
@@ -70,3 +71,34 @@ def get_tool_context(
     from app.tools import ToolContext
 
     return ToolContext(catalog=catalog, cache=cache, home_id=1)
+
+
+def mqtt_link_down(request: Request) -> bool:
+    """MQTT 链路是否断开（只对 `DATA_MODE=mqtt` 有意义）。
+
+    为什么"断链"要单独成一个判定
+    ----------------------------
+    设备在线本来是"最近有上报"（`received_at` 在 600 秒内）。但链路一断，
+    后端**收不到任何设备的数据**，它连"设备还在不在"都无从判断 ——
+    这时候还显示"32 台在线"就是在撒谎。真实平台遇到网关掉线也是直接把
+    下面所有设备标成不可达，而不是等超时。
+
+    ⚠️ `mock` / `csv` 模式本来就不连 broker，不能因此判成"全部离线"。
+    """
+    settings = get_settings()
+    if settings.data_mode != "mqtt":
+        return False
+
+    worker = getattr(request.app.state, "mqtt_worker", None)
+    if worker is not None:
+        try:
+            return not bool(worker.status().get("connected", False))
+        except Exception:  # noqa: BLE001
+            pass
+
+    service = getattr(request.app.state, "mqtt_service", None)
+    if service is not None:
+        return not bool(service.service_stats.connected)
+
+    # 订阅服务压根没起（启动失败）：这本身就是"链路不可用"
+    return True

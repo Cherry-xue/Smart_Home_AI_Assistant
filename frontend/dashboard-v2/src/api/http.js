@@ -51,10 +51,38 @@ function qs(params = {}) {
   return s ? `?${s}` : ''
 }
 
+/**
+ * GET 的**请求合并 + 2.5 秒短缓存**。
+ *
+ * 为什么需要：路由切换是 `out-in`（旧页 200ms 离场 → 新页 300ms 淡入）。
+ * 如果等新页 `onMounted` 才开始请求，那几百毫秒纯属白等。
+ * 现在路由守卫会在**切页那一刻**就预取（见 `router/prefetch.js`），
+ * 页面挂载后再发同一个请求时：
+ *   - 预取还在飞 → 复用同一个 Promise（不重复发）
+ *   - 预取已完成 → 2.5 秒内直接拿缓存
+ * 于是"动画期间加载数据"变成现实，页面首帧就有内容。
+ *
+ * ⚠️ 只缓存 GET 且只保留 2.5 秒：写操作、指令、场景执行都不经过这里；
+ *    页面 8 秒轮询也大于 TTL，不会被旧数据黏住。
+ * ⚠️ 同一 key 的调用方拿到的是**同一个对象引用**，只能读、不要改。
+ */
+const CACHE_MS = 2500
+const _getCache = new Map()
+
 export function get(path, params) {
-  return fetch(`${BASE}${path}${qs(params)}`, {
+  const key = path + qs(params)
+  const now = Date.now()
+  const hit = _getCache.get(key)
+  if (hit && now - hit.at < CACHE_MS) return hit.promise
+
+  const promise = fetch(`${BASE}${path}${qs(params)}`, {
     headers: { Accept: 'application/json' },
   }).then(parse)
+
+  _getCache.set(key, { at: now, promise })
+  // 失败不要留在缓存里，否则 2.5 秒内的重试会拿到同一个 rejected promise
+  promise.catch(() => _getCache.delete(key))
+  return promise
 }
 
 export function post(path, body) {

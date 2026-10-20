@@ -102,6 +102,11 @@ async def health(
         offline_devices=offline[:MAX_OFFLINE_LISTED],
     )
 
+    # 链路断开 → 在线数必须是 0。
+    # 与 `/api/devices`、房间卡片同一口径：链路断了就无从判断设备状态，
+    # 保留"32 台在线"会与"链路断开"的红框自相矛盾。
+    link_down = settings.data_mode == "mqtt" and service is not None and not mqtt.connected
+
     ok = database.ok and (not mqtt.enabled or mqtt.connected)
     return HealthOut(
         status="ok" if ok else "degraded",
@@ -118,7 +123,7 @@ async def health(
             "total": len(catalog),
             "rooms": len(catalog.rooms),
             "high_risk": len(catalog.high_risk()),
-            "online": len(all_codes) - len(offline),
+            "online": 0 if link_down else len(all_codes) - len(offline),
         },
         tariff=get_tariff().describe(),
         high_risk_auto_exec=settings.is_high_risk_auto_exec_enabled(),

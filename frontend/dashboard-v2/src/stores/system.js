@@ -15,6 +15,14 @@ export const useSystemStore = defineStore('system', {
     pendingError: null,
     loading: false,
     lastHealthAt: null,
+    /**
+     * 设备状态的"脏版本号"：任何会让设备状态变化的事件（批准/驳回高风险指令、
+     * 下发直控）都 bump 一次，页面 watch 它立刻重取。
+     *
+     * 为什么需要：以前全靠 8 秒的定时轮询 —— 用户点完"批准并下发"，
+     * 设备其实 0.5 秒就动了，但界面要等下一轮轮询才显示，看起来像"反应慢"。
+     */
+    deviceRevision: 0,
     _healthTimer: null,
     _pendingTimer: null,
   }),
@@ -61,7 +69,27 @@ export const useSystemStore = defineStore('system', {
       this.loading = false
     },
 
-    startPolling({ healthMs = 10000, pendingMs = 15000 } = {}) {
+    /**
+     * 有东西动了（批准/驳回/下发）→ 通知各页面立刻重取设备数据。
+     *
+     * `again=true` 时 1.2 秒后再 bump 一次：批准之后链路是
+     * 「下发 → MQTT → 模拟器应用 → 下个 tick 上报 → 后端落库」，
+     * 立刻刷那一次大概率还没拿到新值，补一次才不会停在旧状态。
+     */
+    bumpDevices({ again = false } = {}) {
+      this.deviceRevision += 1
+      if (again) {
+        setTimeout(() => {
+          this.deviceRevision += 1
+        }, 1200)
+      }
+    },
+
+    /**
+     * `pendingMs` 从 15 秒降到 6 秒：点完门锁"上锁"后，待确认项最多 6 秒内出现，
+     * 而不是要盯 15 秒才看到红点。本地接口一次几毫秒，多轮询几次无所谓。
+     */
+    startPolling({ healthMs = 10000, pendingMs = 6000 } = {}) {
       this.stopPolling()
       this._healthTimer = setInterval(() => this.refreshHealth(), healthMs)
       this._pendingTimer = setInterval(() => this.refreshPending(), pendingMs)

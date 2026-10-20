@@ -15,7 +15,7 @@ import datetime as dt
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_cache, get_catalog
+from app.api.deps import get_cache, get_catalog, mqtt_link_down
 from app.db.catalog import DeviceCatalog
 from app.db.session import get_db
 from app.mqtt.cache import LatestValueCache
@@ -72,6 +72,7 @@ def list_devices(
     ),
     catalog: DeviceCatalog = Depends(get_catalog),
     cache: LatestValueCache = Depends(get_cache),
+    link_down: bool = Depends(mqtt_link_down),
 ):
     code = _resolve_room_code(catalog, room_id, room_code)
     items = device_list(
@@ -82,6 +83,7 @@ def list_devices(
         high_risk_only=high_risk_only,
         online_only=online_only,
         home_id=home_id,
+        link_down=link_down,
     )
     return DeviceListOut(
         meta=DeviceListMeta(
@@ -99,9 +101,11 @@ def device_detail(
     device_id: int,
     catalog: DeviceCatalog = Depends(get_catalog),
     cache: LatestValueCache = Depends(get_cache),
+    link_down: bool = Depends(mqtt_link_down),
 ):
     dev = _require_device(catalog, device_id)
-    return device_list(catalog, cache, codes=[dev.code])[0]
+    # 详情页与列表必须同口径：列表说离线、详情说在线是最容易让人不信系统的 bug
+    return device_list(catalog, cache, codes=[dev.code], link_down=link_down)[0]
 
 
 @router.get(

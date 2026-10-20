@@ -123,7 +123,8 @@
               <div class="doc-sections muted tiny">{{ (d.sections || []).join(' / ') || '—' }}</div>
             </article>
 
-            <p v-if="!docs.length" class="empty">还没有入库文档</p>
+            <SkeletonList v-if="loading && !docs.length" :rows="4" :bar-h="16" />
+            <p v-else-if="!docs.length" class="empty">还没有入库文档</p>
           </div>
         </section>
 
@@ -139,6 +140,7 @@
             <div class="kv-row"><dt>嵌入模型</dt><dd class="mono">{{ status.embedding_model }}</dd></div>
             <div class="kv-row"><dt>源文件</dt><dd class="tnum">{{ status.raw_files }} 个</dd></div>
           </dl>
+          <SkeletonList v-else-if="loading" :rows="5" :bar-h="12" />
           <p v-else class="empty">读不到状态</p>
 
           <p v-if="status?.note" class="kb-note">{{ status.note }}</p>
@@ -151,6 +153,7 @@
 <script setup>
 import { nextTick, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import SkeletonList from '@/components/SkeletonList.vue'
 import { getKnowledgeStatus, listDocuments, searchKnowledge } from '@/api'
 
 const QUICK = [
@@ -177,7 +180,7 @@ const q = ref('')
 const k = ref(4)
 const docType = ref(null)
 const deviceType = ref(null)
-const loading = ref(false)
+const loading = ref(true)   // 首帧即骨架，避免淡入时先显示"还没有入库文档"
 const turns = ref([])
 const listBox = ref(null)
 
@@ -240,17 +243,20 @@ async function search() {
 }
 
 async function loadMeta() {
+  // 两个请求一起发、一起收尾：`loading` 的初值是 true（首屏骨架），
+  // 必须等**文档列表和数据库状态都回来**才能置 false ——
+  // 否则状态卡会先闪一下"读不到状态"。
   try {
     // ⚠️ 这个端点返回的是**数组**（response_model=list[IndexedDocumentOut]），
     //    不是 {documents: [...]} —— 别顺手套一层 .documents
-    docs.value = (await listDocuments()) ?? []
-  } catch {
-    docs.value = []
-  }
-  try {
-    status.value = await getKnowledgeStatus()
-  } catch {
-    status.value = null
+    const [d, st] = await Promise.all([
+      listDocuments().catch(() => []),
+      getKnowledgeStatus().catch(() => null),
+    ])
+    docs.value = d ?? []
+    status.value = st
+  } finally {
+    loading.value = false
   }
 }
 

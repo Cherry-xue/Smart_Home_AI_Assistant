@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_cache, get_catalog
+from app.api.deps import get_cache, get_catalog, mqtt_link_down
 from app.db.catalog import DeviceCatalog
 from app.db.session import engine, get_db
 from app.mqtt.cache import LatestValueCache
@@ -90,6 +90,7 @@ def list_rooms(
     db: Session = Depends(get_db),
     catalog: DeviceCatalog = Depends(get_catalog),
     cache: LatestValueCache = Depends(get_cache),
+    link_down: bool = Depends(mqtt_link_down),
 ):
     # ⚠️ 只有"套房不存在"才 404。
     #    套房存在但一个房间都没建（新建套房就是这样）必须返回 200 + 空列表 ——
@@ -97,7 +98,7 @@ def list_rooms(
     exists = db.execute(text("SELECT 1 FROM homes WHERE id = :h"), {"h": home_id}).first()
     if exists is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"家庭 {home_id} 不存在")
-    items = room_cards(db, catalog, cache, home_id)
+    items = room_cards(db, catalog, cache, home_id, link_down=link_down)
     return RoomsOut(home_id=home_id, generated_at=dt.datetime.now(), items=items)
 
 

@@ -37,6 +37,18 @@ KEY_METRIC_PRIORITY: tuple[str, ...] = (
 #: 超过这个时间没上报就算"离线"。设备是秒级上报的，10 分钟没动静基本就是有问题。
 DEFAULT_OFFLINE_AFTER_SEC = 600.0
 
+#: 接**市电**的设备类型。总闸一断它们立刻没电。
+#:
+#: ⚠️ 必须与 `gateway/simulator/physics.py::POWERED_TYPES` 保持一致：
+#: 模拟器那边负责"断电就不再上报"，这里负责"在 600 秒失联超时之前就把它们标成离线"。
+#: 少了后者，断闸之后界面还要显示 10 分钟"一切正常"，非常反直觉。
+#:
+#: 刻意**不包含**：门锁（电池）、燃气阀（燃气/电池）、烟感/气感/门磁/毫米波/温湿度
+#: —— 它们断电后反而更要继续工作（消防与安防设备的备电要求）。
+POWERED_DEVICE_TYPES = frozenset(
+    {"light", "ac", "curtain", "tv", "speaker", "water_heater", "humidifier"}
+)
+
 #: 房间卡片上最多展示几个关键指标
 DEFAULT_KEY_METRIC_LIMIT = 4
 
@@ -83,6 +95,40 @@ def _online_state(
         return False, None, None
     age = (now - last).total_seconds()
     return age <= offline_after_sec, last, round(age, 1)
+
+
+def _power_cut(catalog: DeviceCatalog, cache: LatestValueCache, home_id: int | None) -> bool:
+    """这一套房的总闸是不是断开状态。
+
+    读缓存里的 `power_state`（总闸自带独立控制电源，断电后仍在上报），
+    拿不到就当"有电"——不能因为一时查不到就把全屋标成离线。
+    """
+    for dev in catalog.all():
+        if dev.device_type != "main_breaker":
+            continue
+        if home_id is not None and dev.home_id != home_id:
+            continue
+        state = str(cache.value_of(dev.code, "power_state", "on") or "on")
+        return state == "off"
+    return False
+
+
+def _is_online(
+    cache: LatestValueCache,
+    dev: DeviceInfo,
+    now: dt.datetime,
+    offline_after_sec: float,
+    power_cut: bool,
+) -> tuple[bool, dt.datetime | None, float | None]:
+    """在线判定 = 最近有上报 **且** 没有被总闸断电。
+
+    ⚠️ 断电要单独判：设备断电后是**不再上报**的，靠 600 秒超时要等太久，
+    期间界面会一直显示"灯开着、空调开着"，与"总闸已断"自相矛盾。
+    """
+    online, last, age = _online_state(cache, dev, now, offline_after_sec)
+    if power_cut and dev.device_type in POWERED_DEVICE_TYPES:
+        return False, last, age
+    return online, last, age
 
 
 def _event_counts_by_room(db: Session, since: dt.datetime) -> dict[int, int]:
@@ -132,12 +178,18 @@ def room_cards(
     offline_after_sec: float = DEFAULT_OFFLINE_AFTER_SEC,
     key_metric_limit: int = DEFAULT_KEY_METRIC_LIMIT,
     event_window_hours: int = 24,
+    link_down: bool = False,
 ) -> list[dict[str, Any]]:
-    """家庭总览用的房间卡片墙。"""
+    """家庭总览用的房间卡片墙。
+
+    `link_down=True`（MQTT 断开）时所有设备一律视为离线：链路断了，
+    平台连"设备在不在"都判断不了，保留"在线"就是撒谎。
+    """
     now = now or dt.datetime.now()
     event_counts = _event_counts_by_room(db, now - dt.timedelta(hours=event_window_hours))
     alarm_counts = _alarm_counts_by_room(db)
 
+    power_cut = _power_cut(catalog, cache, home_id)
     cards: list[dict[str, Any]] = []
     for room in catalog.rooms_of(home_id):
         devs = catalog.in_room(room.code)
@@ -147,7 +199,9 @@ def room_cards(
         candidates: list[tuple[int, DeviceInfo, str, Any]] = []
 
         for dev in devs:
-            is_online, last, _age = _online_state(cache, dev, now, offline_after_sec)
+            is_online, last, _age = _is_online(cache, dev, now, offline_after_sec, power_cut)
+            if link_down:
+                is_online = False
             if is_online:
                 online += 1
             # "数据更新时间"用**观测时间**（含预热数据），不是实时上报时间 ——
@@ -214,6 +268,7 @@ def device_list(
     home_id: int | None = None,
     now: dt.datetime | None = None,
     offline_after_sec: float = DEFAULT_OFFLINE_AFTER_SEC,
+    link_down: bool = False,
 ) -> list[dict[str, Any]]:
     """设备列表（按房间顺序排列）。当前值来自缓存，不查库。
 
@@ -221,6 +276,7 @@ def device_list(
     否则会把别的房子的设备列出来 —— 多套房下这是最容易被忽略的越权式串台。
     """
     now = now or dt.datetime.now()
+    power_cut = _power_cut(catalog, cache, home_id)
     room_order = {r.code: r.sort_no for r in catalog.rooms}
     devices = sorted(catalog.all(), key=lambda d: (room_order.get(d.room_code, 999), d.id))
     code_filter = set(codes) if codes is not None else None
@@ -238,7 +294,10 @@ def device_list(
         if high_risk_only and not dev.high_risk:
             continue
 
-        is_online, last, age = _online_state(cache, dev, now, offline_after_sec)
+        is_online, last, age = _is_online(cache, dev, now, offline_after_sec, power_cut)
+        # 链路断了 → 全部不可达（见 room_cards 的说明）
+        if link_down:
+            is_online = False
         if online_only and not is_online:
             continue
 

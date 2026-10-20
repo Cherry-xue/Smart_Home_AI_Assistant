@@ -207,122 +207,129 @@ def energy_summary(
     """
     params = {"f": from_dt, "t": to_dt}
     home_clause = ""
-    home_clause_er = ""
     if home_id is not None:
         params["hid"] = home_id
         home_clause = " AND device_id IN (SELECT id FROM devices WHERE home_id = :hid)"
-        home_clause_er = " AND er.device_id IN (SELECT id FROM devices WHERE home_id = :hid)"
     price_of = {b.period: b.price for b in tariff.bands}
 
-    # ---- 分时段 ----
-    period_rows = db.execute(
+    # ---- 一次扫描，三个维度在 Python 里聚合 ----
+    # 原来是分时段 / 分设备 / 逐小时各扫一遍 24 小时窗口（实测 15.7 万行 × 3 遍 ≈ 1.1 秒）。
+    # 合并成一次扫描、分组粒度 (设备, 时段, 小时)：返回行数最多 设备数×4×24，
+    # 比三次全表扫便宜得多。三个口径的累加逻辑都放在下面，金额仍按分时电价逐段算。
+    rows = db.execute(
         text(
             f"""
-            SELECT tariff_period, COUNT(*) AS rows_n,
+            SELECT device_id,
+                   tariff_period,
+                   HOUR(observed_at) AS h,
                    COALESCE(SUM(energy_kwh), 0) AS kwh,
-                   AVG(power_w) AS avg_w, MAX(power_w) AS peak_w
+                   COALESCE(SUM(power_w), 0)    AS sum_w,
+                   MAX(power_w)                 AS peak_w,
+                   COUNT(*)                     AS rows_n
             FROM energy_readings
             WHERE observed_at >= :f AND observed_at <= :t{home_clause}
-            GROUP BY tariff_period
+            GROUP BY device_id, tariff_period, HOUR(observed_at)
             """
         ),
         params,
     ).all()
 
-    total_kwh = sum(float(r.kwh or 0) for r in period_rows)
+    period_acc: dict[str | None, dict[str, float]] = {}
+    device_acc: dict[int, dict[str, float]] = {}
+    hour_acc: dict[int, dict[str, float]] = {}
+    total_kwh = 0.0
+
+    for r in rows:
+        kwh = float(r.kwh or 0)
+        sum_w = float(r.sum_w or 0)
+        rows_n = int(r.rows_n or 0)
+        peak = float(r.peak_w) if r.peak_w is not None else 0.0
+        total_kwh += kwh
+
+        # ① 分时段
+        pacc = period_acc.setdefault(
+            r.tariff_period, {"kwh": 0.0, "sum_w": 0.0, "rows": 0.0, "peak": 0.0}
+        )
+        pacc["kwh"] += kwh
+        pacc["sum_w"] += sum_w
+        pacc["rows"] += rows_n
+        pacc["peak"] = max(pacc["peak"], peak)
+
+        # ② 分设备：金额不能跨时段平均，必须按每段电价分别乘再加
+        dacc = device_acc.setdefault(
+            r.device_id, {"kwh": 0.0, "cost": 0.0, "sum_w": 0.0, "rows": 0.0, "peak": 0.0}
+        )
+        price = price_of.get(r.tariff_period) if r.tariff_period else None
+        dacc["kwh"] += kwh
+        dacc["cost"] += kwh * price if price is not None else 0.0
+        dacc["sum_w"] += sum_w
+        dacc["rows"] += rows_n
+        dacc["peak"] = max(dacc["peak"], peak)
+
+        # ③ 逐小时（与原实现一致：按 0~23 点合并，跨天也会并到一起）
+        hacc = hour_acc.setdefault(int(r.h), {"kwh": 0.0, "sum_w": 0.0, "rows": 0.0})
+        hacc["kwh"] += kwh
+        hacc["sum_w"] += sum_w
+        hacc["rows"] += rows_n
+
+    # ---- 分时段 ----
     by_period: list[dict[str, Any]] = []
     total_cost = 0.0
-    for r in period_rows:
-        kwh = float(r.kwh or 0)
-        price = price_of.get(r.tariff_period) if r.tariff_period else None
+    for period, acc in period_acc.items():
+        kwh = acc["kwh"]
+        price = price_of.get(period) if period else None
         cost = kwh * price if price is not None else None
         if cost:
             total_cost += cost
         by_period.append(
             {
-                "period": r.tariff_period,
+                "period": period,
                 "price": price,
                 "kwh": round(kwh, 4),
                 "cost": round(cost, 4) if cost is not None else None,
                 "share": round(kwh / total_kwh, 4) if total_kwh else None,
-                "avg_power_w": round(float(r.avg_w), 1) if r.avg_w is not None else None,
-                "peak_power_w": round(float(r.peak_w), 1) if r.peak_w is not None else None,
-                "rows": r.rows_n,
+                "avg_power_w": round(acc["sum_w"] / acc["rows"], 1) if acc["rows"] else None,
+                "peak_power_w": round(acc["peak"], 1) if acc["peak"] else None,
+                "rows": int(acc["rows"]),
             }
         )
-    by_period.sort(key=lambda x: list(price_of).index(x["period"]) if x["period"] in price_of else 99)
+    by_period.sort(
+        key=lambda x: list(price_of).index(x["period"]) if x["period"] in price_of else 99
+    )
 
-    # ---- 分设备（按 period 分组算成本，再在 Python 里聚合 —— 保证金额口径准确）----
-    device_rows = db.execute(
-        text(
-            f"""
-            SELECT d.id AS device_id, d.code, d.name, d.device_type,
-                   r.name AS room_name, er.tariff_period,
-                   COALESCE(SUM(er.energy_kwh), 0) AS kwh,
-                   AVG(er.power_w) AS avg_w, MAX(er.power_w) AS peak_w
-            FROM energy_readings er
-            JOIN devices d ON d.id = er.device_id
-            LEFT JOIN rooms r ON r.id = d.room_id
-            WHERE er.observed_at >= :f AND er.observed_at <= :t{home_clause_er}
-            GROUP BY d.id, d.code, d.name, d.device_type, r.name, er.tariff_period
-            """
-        ),
-        params,
-    ).all()
-
-    agg: dict[int, dict[str, Any]] = {}
-    for r in device_rows:
-        item = agg.setdefault(
-            r.device_id,
+    # ---- 分设备 ----
+    # 设备元数据从目录取（39 条，内存），不再 JOIN devices/rooms：
+    # 那次 JOIN 与聚合结果无关，只是"给 id 配个名字"，没必要放进慢查询里。
+    meta = {d.id: d for d in catalog.all()}
+    by_device: list[dict[str, Any]] = []
+    for device_id, acc in device_acc.items():
+        info = meta.get(device_id)
+        if info is None:
+            continue  # 设备已被删除，历史数据留着但不再展示
+        by_device.append(
             {
-                "device_id": r.device_id,
-                "code": r.code,
-                "name": r.name,
-                "device_type": r.device_type,
-                "room_name": r.room_name,
-                "kwh": 0.0,
-                "cost": 0.0,
-                "peak_power_w": 0.0,
-                "avg_power_w": None,
-            },
+                "device_id": device_id,
+                "code": info.code,
+                "name": info.name,
+                "device_type": info.device_type,
+                "room_name": info.room_name,
+                "kwh": round(acc["kwh"], 4),
+                "cost": round(acc["cost"], 4),
+                "peak_power_w": round(acc["peak"], 1),
+                "avg_power_w": round(acc["sum_w"] / acc["rows"], 1) if acc["rows"] else None,
+                "share": round(acc["kwh"] / total_kwh, 4) if total_kwh else None,
+            }
         )
-        kwh = float(r.kwh or 0)
-        price = price_of.get(r.tariff_period) if r.tariff_period else None
-        item["kwh"] += kwh
-        item["cost"] += kwh * price if price is not None else 0.0
-        if r.peak_w is not None:
-            item["peak_power_w"] = max(item["peak_power_w"], float(r.peak_w))
-        if r.avg_w is not None:
-            item["avg_power_w"] = round(float(r.avg_w), 1)
-
-    by_device = sorted(agg.values(), key=lambda x: -x["kwh"])
-    for item in by_device:
-        item["kwh"] = round(item["kwh"], 4)
-        item["cost"] = round(item["cost"], 4)
-        item["share"] = round(item["kwh"] / total_kwh, 4) if total_kwh else None
+    by_device.sort(key=lambda x: -x["kwh"])
 
     # ---- 逐小时 ----
-    hourly_rows = db.execute(
-        text(
-            f"""
-            SELECT HOUR(observed_at) AS h,
-                   COALESCE(SUM(energy_kwh), 0) AS kwh,
-                   AVG(power_w) AS avg_w
-            FROM energy_readings
-            WHERE observed_at >= :f AND observed_at <= :t{home_clause}
-            GROUP BY HOUR(observed_at)
-            ORDER BY h
-            """
-        ),
-        params,
-    ).all()
     hourly = [
         {
-            "hour": int(r.h),
-            "kwh": round(float(r.kwh or 0), 4),
-            "avg_power_w": round(float(r.avg_w), 1) if r.avg_w is not None else None,
+            "hour": h,
+            "kwh": round(acc["kwh"], 4),
+            "avg_power_w": round(acc["sum_w"] / acc["rows"], 1) if acc["rows"] else None,
         }
-        for r in hourly_rows
+        for h, acc in sorted(hour_acc.items())
     ]
 
     return {

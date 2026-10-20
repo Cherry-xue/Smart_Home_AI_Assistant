@@ -2,7 +2,10 @@
   <div class="overview">
     <!-- ==================== 主显示区 ==================== -->
     <!-- `page-fade`：切页时淡入淡出（规则见 styles/transitions.css） -->
-    <section class="stage page-fade">
+    <section
+      class="stage page-fade"
+      :class="{ 'phase-out': swapPhase === 'out', 'phase-in': swapPhase === 'in' }"
+    >
       <span class="stage-label">户型图</span>
       <div class="stage-tools">
         <span class="stage-badge">
@@ -48,11 +51,16 @@
 
     <!-- ==================== 下方菜单 ==================== -->
     <!-- `page-slide`：切页时离开下沉、进入升起（没有下方菜单的页面不标这个类，就不会有升降） -->
-    <section class="bottom page-slide">
+    <section
+      class="bottom page-slide"
+      :class="{ 'phase-out': swapPhase === 'out', 'phase-in': swapPhase === 'in' }"
+    >
       <div class="card card--stat">
         <div class="card-title">在线设备</div>
+        <!-- 数据没到时显示 "—" 而不是 0/0：0 是合法读数，拿它占位会误导 -->
         <div class="card-value tnum">
-          {{ onlineCount }}<span class="card-unit">/ {{ totalCount }}</span>
+          {{ totalCount ? onlineCount : '—'
+          }}<span class="card-unit">/ {{ totalCount || '—' }}</span>
         </div>
         <div class="card-foot muted">
           高风险 {{ deviceStats.high_risk ?? '—' }} 台 · 房间 {{ deviceStats.rooms ?? '—' }} 间
@@ -85,7 +93,9 @@
             共 {{ favoriteScenes.length }} 个
           </span>
         </div>
-        <p v-else class="empty">还没有收藏的场景 —— 去「场景编排」点卡片上的「收藏」</p>
+        <p v-else-if="!loading" class="empty">
+          还没有收藏的场景 —— 去「场景编排」点卡片上的「收藏」
+        </p>
       </div>
     </section>
 
@@ -112,6 +122,19 @@ import RoomSwitchPanel from './RoomSwitchPanel.vue'
 
 const system = useSystemStore()
 const home = useHomeStore()
+
+// 首帧就是加载态：切到总览时那 300ms 淡入里，户型图与在线数还没回来，
+// 直接渲染空画布 + 0/0，数据到了再"啪"地出现 —— 观感非常跳。
+const loading = ref(true)
+/**
+ * 换套房的动画阶段：null / 'out'（离场）/ 'in'（入场）。
+ *
+ * 顺序必须是「先离场 → 换数据 → 再入场」。之前写成"换数据 + 同时淡出"，
+ * 结果用户看到的是"新套房先出现，然后它自己淡出又淡入" —— 等于动画白做。
+ */
+const swapPhase = ref(null)
+/** 快速连切时的序号：只有"最后一次"切换有权把界面淡回来 */
+let swapToken = 0
 
 const rooms = ref([])
 const devices = ref([])
@@ -220,28 +243,55 @@ async function ensureCapabilities() {
 // ---------------------------------------------------------------- 数据
 let timer = null
 
+/**
+ * 只发请求、**不碰界面状态**。
+ *
+ * 之所以拆成两半：换套房时要"先淡出、再换数据"——
+ * 如果请求回来就直接赋值，用户会看到"新套房淡出、再淡入"（数据在动画之前就变了）。
+ */
+async function fetchAll(hid) {
+  // 每个请求**各自兜底**：任何一个接口报错都不能让整页停在上一套房的数据上
+  // （之前 /rooms 对空套房返回 404，Promise.all 整体失败，切过去还是旧户型）
+  const [r, d, sc, e, fp] = await Promise.all([
+    getRooms(hid).catch(() => ({ items: [] })),
+    getDevices({ home_id: hid }).catch(() => ({ items: [] })),
+    listScenes(hid).catch(() => []),
+    getEnergySummary({ home_id: hid }).catch(() => null),
+    // 户型几何：拿不到就保持 null → 回落默认户型，总览页不会因此变成空白
+    getFloorplan(hid).catch(() => null),
+  ])
+  return { r, d, sc, e, fp }
+}
+
+/** 把请求结果写进界面（`fetchAll` 的另一半）。 */
+function applyAll({ r, d, sc, e, fp }) {
+  rooms.value = r?.items ?? []
+  devices.value = d?.items ?? []
+  scenes.value = Array.isArray(sc) ? sc : []
+  energy.value = e
+  if (fp) floorplan.value = fp
+  loadError.value = ''
+}
+
 async function loadAll() {
   try {
     const hid = home.currentId
-    // 每个请求**各自兜底**：任何一个接口报错都不能让整页停在上一套房的数据上
-    // （之前 /rooms 对空套房返回 404，Promise.all 整体失败，切过去还是旧户型）
-    const [r, d, sc, e, fp] = await Promise.all([
-      getRooms(hid).catch(() => ({ items: [] })),
-      getDevices({ home_id: hid }).catch(() => ({ items: [] })),
-      listScenes(hid).catch(() => []),
-      getEnergySummary({ home_id: hid }).catch(() => null),
-      // 户型几何：拿不到就保持 null → 回落默认户型，总览页不会因此变成空白
-      getFloorplan(hid).catch(() => null),
-    ])
-    rooms.value = r?.items ?? []
-    devices.value = d?.items ?? []
-    scenes.value = Array.isArray(sc) ? sc : []
-    energy.value = e
-    floorplan.value = fp
-    loadError.value = ''
+    // ⚠️ 几何**单独先取先画**。
+    //   以前是在下面那个 Promise.all 里统一赋值 —— 于是"户型图"要等最慢的
+    //   能耗汇总（实测 1.1 秒）一起回来才出现，这 1 秒里画布是空的。
+    //   户型几何读的是本地 JSON（4ms），没有任何理由陪跑。
+    getFloorplan(hid)
+      .then((fp) => {
+        if (fp && home.currentId === hid) floorplan.value = fp
+      })
+      .catch(() => {})
+
+    applyAll(await fetchAll(hid))
     if (selectedCode.value) ensureCapabilities()
   } catch (err) {
     loadError.value = err.message
+  } finally {
+    loading.value = false
   }
 }
 
@@ -286,15 +336,40 @@ async function refreshLive() {
   }
 }
 
+// 有人批准/驳回了指令 → 立刻重取，别等 8 秒的定时轮询。
+// 这正是"批了门锁却半天不变"的观感来源之一。
+watch(() => system.deviceRevision, () => refreshLive())
+
 // 换套房 = 换一整套数据。选中房间、能力缓存都属于"上一套房"，必须清掉，
 // 否则左侧面板会拿着旧房间的 code 去新套房里找数据。
 watch(
   () => home.currentId,
   async () => {
+    const token = ++swapToken
+    const hid = home.currentId
+
+    // ① 离场：主区淡出、下方卡片下滑（节奏与切页一致：下滑 260ms）
+    //    请求同时发出去，不浪费这段动画时间。
+    swapPhase.value = 'out'
+    const pending = fetchAll(hid)
+    await new Promise((r) => setTimeout(r, 280))
+
+    // ② 换数据：此刻界面是看不见的（主区 opacity 0、卡片已滑出画面），
+    //    所以用户不会看到"新套房先出现再淡出"。
     selectedCode.value = null
     hoverCode.value = null
     for (const k of Object.keys(capsByDevice)) delete capsByDevice[k]
-    await loadAll()
+
+    const data = await pending
+    // 连切（1→2→3）时，旧那次回来得晚就直接丢弃，别把界面刷回上上套房
+    if (token !== swapToken) return
+    applyAll(data)
+    if (selectedCode.value) ensureCapabilities()
+
+    // ③ 入场：主区淡入、下方卡片升起（上升 340ms + 40ms 延迟）
+    swapPhase.value = 'in'
+    await new Promise((r) => setTimeout(r, 420))
+    if (token === swapToken) swapPhase.value = null
   },
 )
 
@@ -325,6 +400,40 @@ onUnmounted(() => {
   border: 1px solid var(--c-line);
   display: flex;
   flex-direction: column;
+}
+
+/* ---------------- 换套房：离场 → 换数据 → 入场 ----------------
+   路由切换由 AppShell 的 page-fade / page-slide 负责；换房源是页面内部状态变化，
+   这里按同样的节奏补一套：主区淡出淡入，下方卡片**下滑再升起**。
+   ⚠️ 都用单类选择器：路由过渡时 `.page-enter-active.page-fade`、
+      `.page-enter-active .page-slide`（两个类）优先级更高，不会被这里压掉。 */
+.stage {
+  transition: opacity 180ms var(--ease);
+}
+
+.stage.phase-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stage.phase-in {
+  opacity: 1;
+  transition: opacity 300ms var(--ease) 60ms;
+}
+
+/* 下方卡片：与路由 page-slide 完全同一套参数（下滑 260 / 上升 340+40） */
+.bottom {
+  transition: transform 260ms var(--ease);
+}
+
+.bottom.phase-out {
+  transform: translateY(calc(100% + 16px));
+  pointer-events: none;
+}
+
+.bottom.phase-in {
+  transform: translateY(0);
+  transition: transform 340ms var(--ease) 40ms;
 }
 .stage-label {
   position: absolute;

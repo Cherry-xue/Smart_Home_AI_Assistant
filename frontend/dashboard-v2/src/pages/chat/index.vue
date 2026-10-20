@@ -371,6 +371,8 @@ function stop() {
 
 async function onDecided({ choice, out }) {
   await system.refreshPending()
+  // 批准之后设备可能已经动了 → 通知总览/设备页立刻重取，而不是等下一轮轮询
+  system.bumpDevices({ again: true })
   if (!out?.answer) return
   const verb = choice === 'approve' ? '已批准' : '已驳回'
   messages.value.push({

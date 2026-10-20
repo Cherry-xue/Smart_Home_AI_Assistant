@@ -238,7 +238,8 @@
               </div>
             </article>
 
-            <p v-if="!scenes.length" class="empty">还没有保存过场景</p>
+            <SkeletonList v-if="loadingScenes && !scenes.length" :rows="4" :bar-h="20" />
+            <p v-else-if="!scenes.length" class="empty">还没有保存过场景</p>
           </div>
         </section>
       </aside>
@@ -373,6 +374,7 @@ import {
   setSceneFavorite,
   updateScene,
 } from '@/api'
+import SkeletonList from '@/components/SkeletonList.vue'
 import { useHomeStore } from '@/stores/home'
 import { statusMeta } from '@/utils/format'
 
@@ -395,7 +397,8 @@ const turns = ref([])
 const listBox = ref(null)
 
 const scenes = ref([])
-const loadingScenes = ref(false)
+// 初值 true：否则淡入时先显示"还没有保存过场景"，卡片再突然出现
+const loadingScenes = ref(true)
 const runningId = ref(null)
 
 let seq = 0

@@ -47,7 +47,9 @@
           <h3 class="sec-title">逐小时用电</h3>
           <span class="muted tiny">{{ hourlyText }}</span>
         </header>
+        <!-- 图表加载中：占位块高度与图表一致，数据到了原地替换、不跳版 -->
         <EChart v-if="hourlyOption" :option="hourlyOption" :height="248" />
+        <SkeletonList v-else-if="loading" :rows="1" :bar-h="248" />
         <p v-else class="empty">该时间窗内没有用能数据</p>
       </section>
 
@@ -70,7 +72,8 @@
               </span>
               <span class="p-cost tnum">¥{{ num(p.cost, 2) }}</span>
             </div>
-            <p v-if="!summary.by_period.length" class="empty">暂无数据</p>
+            <SkeletonList v-if="loading && !summary.by_period.length" :rows="4" />
+            <p v-else-if="!summary.by_period.length" class="empty">暂无数据</p>
           </div>
         </section>
 
@@ -89,7 +92,8 @@
               <span class="dev-kwh tnum">{{ num(d.kwh, 2) }} kWh</span>
               <span class="dev-cost tnum">¥{{ num(d.cost, 2) }}</span>
             </div>
-            <p v-if="!topDevices.length" class="empty">暂无数据</p>
+            <SkeletonList v-if="loading && !topDevices.length" :rows="5" />
+            <p v-else-if="!topDevices.length" class="empty">暂无数据</p>
           </div>
         </section>
       </div>
@@ -111,13 +115,15 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import EChart from '@/components/EChart.vue'
+import SkeletonList from '@/components/SkeletonList.vue'
 import { getEnergySummary } from '@/api'
 import { fmtDateTime, num, periodLabel } from '@/utils/format'
 import { useHomeStore } from '@/stores/home'
 import { cssVar } from '@/utils/theme'
 
 const home = useHomeStore()
-const loading = ref(false)
+// 首帧就是加载态：否则淡入那 300ms 里显示的是"该时间窗内没有用能数据"
+const loading = ref(true)
 const range = ref(24)
 const summary = ref({
   from: null,

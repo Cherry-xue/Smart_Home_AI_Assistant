@@ -5,6 +5,8 @@
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { useHomeStore } from '@/stores/home'
+import { prefetchRoute } from './prefetch'
 
 const routes = [
   { path: '/', redirect: '/overview' },
@@ -24,7 +26,28 @@ const routes = [
   { path: '/:pathMatch(.*)*', redirect: '/overview' },
 ]
 
-export default createRouter({
+// ⚠️ 必须先赋给变量再导出：下面要挂 `beforeEach` 守卫，
+//    直接 `export default createRouter(...)` 的话 `router` 是未定义的（会白屏）。
+const router = createRouter({
   history: createWebHistory(),
   routes,
 })
+
+/**
+ * 切页时**立刻**预取目标页的数据（见 `router/prefetch.js`）。
+ *
+ * 不 `await`：导航必须马上开始，让旧页的 200ms 离场动画与新页的请求并行。
+ * 等新页挂载时，请求要么还在飞、要么已经回来了 —— 首帧就有内容。
+ */
+router.beforeEach((to) => {
+  let homeId = 1
+  try {
+    // 首屏导航理论上可能早于 pinia 激活，取不到就用 1 号房（与后端缺省一致）
+    homeId = useHomeStore().currentId || 1
+  } catch {
+    homeId = 1
+  }
+  prefetchRoute(to.name, homeId)
+})
+
+export default router

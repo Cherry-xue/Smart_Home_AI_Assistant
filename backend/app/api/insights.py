@@ -37,6 +37,7 @@ from app.schemas.insights import (
     SuggestionListOut,
 )
 from app.services.analytics import resolve_window
+from app.core import sync_guard
 from app.services.care import list_observations, sync_observations
 from app.services.overview import data_anchor
 from app.services.safety import (
@@ -51,6 +52,9 @@ from app.services.suggestions import (
     list_suggestions,
     sync_suggestions,
 )
+
+#: 上一次照护推导的覆盖度（节流跳过时复用，避免界面闪烁）
+_LAST_COVERAGE: dict[str, list[SubjectCoverageOut]] = {}
 
 security_router = APIRouter(prefix="/security", tags=["security"])
 care_router = APIRouter(prefix="/care", tags=["care"])
@@ -89,7 +93,9 @@ def list_alarms_endpoint(
     window = resolve_window(from_, to_, default_hours=24.0, anchor=anchor)
 
     sync_out = AlarmSyncOut()
-    if sync:
+    # 节流：8 秒内重复请求不再重跑推导（实测这一步占 11/18ms，照护与建议更夸张）。
+    # 幂等保证跳过是安全的；响应仍然每次现查库，所以 ack 之后看到的一定是新状态。
+    if sync and sync_guard.should_run("alarms", "global"):
         ev = sync_event_alarms(db, rules, from_dt=window[0], to_dt=window[1])
         st = sync_state_alarms(db, rules, catalog, cache, anchor=anchor)
         sync_out = AlarmSyncOut(
@@ -171,8 +177,12 @@ def list_observations_endpoint(
 
     coverage = []
     if sync:
-        res = sync_observations(db, rules, catalog, anchor=anchor)
-        coverage = [SubjectCoverageOut(**s.as_dict()) for s in res.subjects]
+        if sync_guard.should_run("care", "global"):
+            res = sync_observations(db, rules, catalog, anchor=anchor)
+            # 覆盖度是推导的副产物，跳过推导时沿用上一次的结果：
+            # 否则页面顶部那行"覆盖 XX 桶"会随着节流时有时无。
+            _LAST_COVERAGE["global"] = [SubjectCoverageOut(**s.as_dict()) for s in res.subjects]
+        coverage = _LAST_COVERAGE.get("global", [])
 
     data = list_observations(
         db, home_id=home_id, member_id=member_id,
@@ -201,7 +211,7 @@ def list_suggestions_endpoint(
     rules: InsightsRules = Depends(get_insights_rules),
     tariff: Tariff = Depends(get_tariff),
 ):
-    if sync:
+    if sync and sync_guard.should_run("suggestions", "global"):
         anchor = _anchor(catalog, cache)
         sync_suggestions(
             db,

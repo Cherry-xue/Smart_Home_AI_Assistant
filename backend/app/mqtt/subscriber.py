@@ -80,6 +80,8 @@ class MqttIngestService:
         self.topic = topic
         self.qos = qos
         self.flush_interval = flush_interval
+        #: 重连退避（秒）。**每次成功连上都会复位成 1.0** —— 见 `_session`。
+        self._backoff = 1.0
 
         if ingestor is None:
             catalog = DeviceCatalog.load(engine)
@@ -96,18 +98,16 @@ class MqttIngestService:
 
     async def run(self) -> None:
         """常驻运行，直到 `request_stop()` 或任务被取消。"""
-        backoff = 1.0
         while not self._stop.is_set():
             try:
                 await self._session()
-                backoff = 1.0
             except aiomqtt.MqttError as e:
                 self.service_stats.connected = False
                 self.service_stats.reconnects += 1
-                log.warning("MQTT 断开（%s），%.0f 秒后重连", e, backoff)
+                log.warning("MQTT 断开（%s），%.0f 秒后重连", e, self._backoff)
                 with contextlib.suppress(asyncio.TimeoutError):
-                    await asyncio.wait_for(self._stop.wait(), timeout=backoff)
-                backoff = min(backoff * 2, 30.0)
+                    await asyncio.wait_for(self._stop.wait(), timeout=self._backoff)
+                self._backoff = min(self._backoff * 2, 30.0)
             except asyncio.CancelledError:
                 self._stop.set()
                 await self._flush()
@@ -128,6 +128,10 @@ class MqttIngestService:
             self.service_stats.connected = True
             self.service_stats.connected_since = dt.datetime.now()
             self.service_stats.sessions += 1
+            # ⚠️ 连上就把退避复位。原先是只在"会话正常结束"时才复位，而断线是抛异常的，
+            #    于是退避一路累积：1→2→4→8→16→30s —— 每断一次，下一次恢复就更慢
+            #    （实测第二次断线要等 16 秒、第三次 30 秒）。
+            self._backoff = 1.0
             log.info("已连接 %s:%s，订阅 %s", self.settings.mqtt_host, self.settings.mqtt_port, self.topic)
 
             flusher = asyncio.create_task(self._flush_loop())
@@ -207,16 +211,25 @@ class MqttIngestService:
 
         db = SessionLocal()
         try:
+            # ⚠️ 设备明确拒绝时必须把状态改成 failed。
+            #    否则断电/无供电时指令记录仍是 executed，统计上等于"执行成功"，
+            #    是另一种形式的谎报（`result_message` 说拒绝、`status` 说成功）。
             db.execute(
                 text(
                     """
                     UPDATE device_commands
                     SET result_message = :msg,
-                        executed_at = COALESCE(executed_at, :now)
+                        executed_at = COALESCE(executed_at, :now),
+                        status = CASE WHEN :ok = 1 THEN status ELSE 'failed' END
                     WHERE id = :cid
                     """
                 ),
-                {"msg": message[:500], "now": dt.datetime.now(), "cid": command_id},
+                {
+                    "msg": message[:500],
+                    "now": dt.datetime.now(),
+                    "cid": command_id,
+                    "ok": 1 if accepted else 0,
+                },
             )
             db.commit()
             log.info("收到设备回执 command_id=%s → %s", command_id,

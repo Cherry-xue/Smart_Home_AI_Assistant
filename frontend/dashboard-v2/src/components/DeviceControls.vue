@@ -94,6 +94,9 @@ import { ElMessage } from 'element-plus'
 import { listDeviceCommands, sendDeviceCommand } from '@/api'
 import { isNumericCap, controlChannelIssue, stepSize, stripAck } from '@/utils/control'
 import { metricLabel, metricText, typeLabel } from '@/utils/format'
+import { useSystemStore } from '@/stores/system'
+
+const system = useSystemStore()
 
 const props = defineProps({
   /** 设备项（来自 /api/devices 的 items） */
@@ -229,6 +232,12 @@ async function apply(cap, value) {
       type: out.status === 'pending_confirm' ? 'warning' : out.status === 'failed' ? 'error' : 'success',
       duration: out.status === 'executed' ? 2600 : 4200,
     })
+    if (out.status === 'pending_confirm') {
+      // ⚠️ 别等下一次轮询：这条待确认项在后端**已经存在**了（下发时就落库并登记），
+      //    立刻拉一次，顶栏红点与「消息」抽屉就能马上看到 ——
+      //    否则用户点完门锁要干等十几秒，会以为"指令没发出去"。
+      await system.refreshPending()
+    }
     if (out.status === 'executed') {
       sent = true
       // 回执到了（或等满 12 秒确认没回执）就丢掉期望值，换回设备真实上报的值 ——
