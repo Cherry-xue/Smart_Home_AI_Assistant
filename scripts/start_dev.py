@@ -15,10 +15,11 @@
 
 用法
 ----
-    python scripts/start_dev.py                 # 全套起来（缺哪个补哪个）
-    python scripts/start_dev.py --backfill       # 额外先补 24 小时历史数据
-    python scripts/start_dev.py --speed 1        # 常驻用真实速度（默认 60 倍速）
-    python scripts/start_dev.py --no-web         # 不拉起大屏（只跑后端那套）
+    python scripts/start_dev.py                    # 全套起来（缺哪个补哪个）
+    python scripts/start_dev.py --backfill --web    # 与双击 start.cmd 完全等价
+    python scripts/start_dev.py --backfill          # 额外先补 24 小时历史数据
+    python scripts/start_dev.py --speed 1           # 常驻用真实速度（默认 60 倍速）
+    python scripts/start_dev.py --no-web            # 不拉起大屏（只跑后端那套）
 
 ⚠️ Mosquitto 不是 Windows 服务，每次开机都要重新起 —— 所以才有这个脚本。
    按 Ctrl+C 可以一次停掉全部子进程。
@@ -51,6 +52,28 @@ MOSQUITTO = os.getenv(
 MOSQUITTO_CONF = os.getenv("MOSQUITTO_CONF", r"C:\ProgramData\mosquitto\mosquitto.conf")
 
 PYTHON = sys.executable
+
+
+def _make_stdout_safe() -> None:
+    """把本脚本自己的输出编码钉成 UTF-8。
+
+    ⚠️ 脚本里用了 `▶ ✓ ❌ ⚠️` 这些符号。在中文 Windows 上：
+    - 双击 `start.cmd` 时先执行了 `chcp 65001`，控制台是 UTF-8，没事；
+    - 但只要输出被**重定向到文件**、或换个没设 UTF-8 的终端，
+      Python 就退回 GBK —— `▶`（U+25B6）不在 GBK 里，第一个 print 就抛
+      `UnicodeEncodeError`，启动流程直接死在这一行（2026-10-20 实测）。
+    控制台能跑不代表重定向能跑，所以这里主动兜一层。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(  # type: ignore[union-attr]
+                encoding="utf-8", errors="replace", line_buffering=True
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
+
+_make_stdout_safe()
 
 
 def port_open(host: str, port: int, timeout: float = 0.6) -> bool:
@@ -87,16 +110,56 @@ def SCENARIO_REPEAT_FLAG(args: argparse.Namespace) -> list[str]:
 
 def start(name: str, args: list[str], cwd: Path, log_name: str) -> subprocess.Popen | None:
     log_path = ROOT / log_name
-    fp = open(log_path, "w", encoding="utf-8", errors="replace")  # noqa: SIM115
+    # 追加而不是覆盖：启动失败时上一次的日志还在，排障能对照（重启频率很低，不至于撑爆）。
+    fp = open(log_path, "a", encoding="utf-8", errors="replace")  # noqa: SIM115
+    fp.write(f"\n\n===== {dt_now()} 启动 {name} =====\n")
+    fp.flush()
+
+    # ⚠️ 必须显式给子进程钉 UTF-8 输出。
+    #    子进程 stdout 被重定向到**文件**时，Python 不会用控制台代码页（PEP 528 只管控制台），
+    #    而是用 locale —— 中文 Windows 上是 GBK。这时任何非 GBK 字符（比如电价里的
+    #    `¥` U+00A5）都会让 `print` 抛 UnicodeEncodeError，服务还没起就崩。
+    #    开发机上测不出来是因为终端恰好设了 PYTHONIOENCODING=utf-8；用户双击时没有。
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     proc = subprocess.Popen(
         args,
         cwd=str(cwd),
         stdout=fp,
         stderr=subprocess.STDOUT,
+        env=env,
         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
     )
     print(f"  ▶ {name} 已启动（PID {proc.pid}），日志：{log_path.name}")
     return proc
+
+
+def dt_now() -> str:
+    import datetime as _dt
+
+    return _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def log_tail(log_name: str, n: int = 18) -> None:
+    """把日志最后几行直接打到控制台。
+
+    "起不来，看 api.log" 这句话对用户没有任何帮助 —— 他得自己去翻文件、
+    还得知道该看哪一段。启动失败时直接把错误摆在面前，才算真正的提示。
+    """
+    path = ROOT / log_name
+    if not path.exists():
+        print(f"     （没有 {log_name}）")
+        return
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:  # noqa: BLE001
+        return
+    tail = [ln for ln in lines if ln.strip()][-n:]
+    if not tail:
+        return
+    print(f"     ---- {log_name} 最后 {len(tail)} 行 ----")
+    for ln in tail:
+        print(f"     {ln}")
+    print("     ----------------------------------")
 
 
 def _kill(proc: subprocess.Popen) -> None:
@@ -179,7 +242,19 @@ def main() -> int:
         "--no-scenario-repeat", action="store_true",
         help="只触发一场异常就停（调试单个场景时用）",
     )
-    ap.add_argument("--no-web", action="store_true", help="不拉起大屏（只跑后端那套）")
+    # ⚠️ `--web` / `--no-web` 必须成对出现：默认是"拉大屏"，
+    #    但 start.cmd 与 README 里都显式写了 `--web` —— 只定义 `--no-web` 的话，
+    #    双击脚本会直接报 "unrecognized arguments: --web" 然后退出（2026-10-20 踩过）。
+    #    用互斥组两个都收，语义也清楚：说 `--web` 是"我要"，说 `--no-web` 是"我不要"。
+    web_group = ap.add_mutually_exclusive_group()
+    web_group.add_argument(
+        "--web", dest="web", action="store_true", default=True,
+        help="拉起大屏 dev server（默认行为，写出来只是让意图明确）",
+    )
+    web_group.add_argument(
+        "--no-web", dest="web", action="store_false",
+        help="不拉起大屏（只跑后端那套）",
+    )
     ap.add_argument("--no-open", action="store_true", help="起来之后不自动打开浏览器")
     args = ap.parse_args()
 
@@ -202,6 +277,7 @@ def main() -> int:
             procs.append(p)
         if not wait_port(1883, 15):
             print("  ❌ Broker 起不来，看 broker.log")
+            log_tail("broker.log")
             return 1
         print("  ✓ MQTT Broker 就绪（1883）")
 
@@ -215,6 +291,7 @@ def main() -> int:
             procs.append(p)
         if not wait_port(8000, 40):
             print("  ❌ 后端起不来，看 api.log")
+            log_tail("api.log")
             return 1
         print("  ✓ 后端就绪（8000）  → http://127.0.0.1:8000/docs")
 
@@ -272,7 +349,7 @@ def main() -> int:
 
     # ---- 5. 大屏（可选）----
     web_url = f"http://127.0.0.1:{WEB_PORT}"
-    if args.no_web:
+    if not args.web:
         print(f"\n  （--no-web：不拉起大屏，自己跑 cd {FRONTEND} && npm run dev）")
     elif port_open("127.0.0.1", WEB_PORT):
         print(f"\n  ✓ 大屏已在运行（{WEB_PORT}）")
@@ -285,6 +362,7 @@ def main() -> int:
             print(f"  ✓ 大屏就绪（{WEB_PORT}）  → {web_url}")
         else:
             print(f"  ⚠️ 大屏没起来或还在编译，看 web.log（端口 {WEB_PORT}）")
+            log_tail("web.log", 10)
 
     print()
     print("=" * 70)
@@ -292,12 +370,12 @@ def main() -> int:
     print(f"  大屏    {web_url}")
     print("  后端    http://127.0.0.1:8000/docs")
     print("  日志    broker.log / api.log / simulator.log"
-          + ("" if args.no_web else " / web.log"))
+          + (" / web.log" if args.web else ""))
     print()
     print("按 Ctrl+C 停止全部进程")
     print("=" * 70)
 
-    if not args.no_web and not args.no_open and port_open("127.0.0.1", WEB_PORT):
+    if args.web and not args.no_open and port_open("127.0.0.1", WEB_PORT):
         import webbrowser
 
         try:

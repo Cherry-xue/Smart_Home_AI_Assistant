@@ -51,18 +51,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return ap.parse_args(argv)
 
 
-def preflight() -> None:
-    """启动前自检：把关键结论打在控制台上，省得事后猜。"""
+def preflight(*, host: str | None = None, port: int | None = None) -> None:
+    """启动前自检：把关键结论打在控制台上，省得事后猜。
+
+    `host` / `port` 由命令行传进来 —— 否则用 `--port 8001` 启动时，
+    横幅还写着 8000，照着它去连会一脸问号。
+    """
     from app.config.settings import get_settings
     from app.core.tariff import get_tariff
     from app.db.session import ping
 
     settings = get_settings()
+    real_host = host or settings.effective_api_host
+    real_port = port or settings.api_port
     print("=" * 78)
     print("智能家居 AI 助手 · API 启动自检")
     print("=" * 78)
-    print(f"  监听地址    : http://{settings.effective_api_host}:{settings.api_port}")
-    if settings.effective_api_host == "0.0.0.0":
+    print(f"  监听地址    : http://{real_host}:{real_port}")
+    if real_host == "0.0.0.0":
         print("                （已允许局域网访问 —— 手机端可直连本机 IP）")
     else:
         print("                （仅本机可访问；手机端接入需设 ALLOW_LAN=true）")
@@ -71,7 +77,10 @@ def preflight() -> None:
     print(f"  环境 / 数据源: {settings.app_env} / {settings.data_mode}")
     print(f"  业务时区    : {settings.timezone}")
     print(f"  电价时段    : {get_tariff().describe()}")
-    print(f"  高风险自动执行: {settings.is_high_risk_auto_exec_enabled}  （必须为 False）")
+    # ⚠️ 这里必须加括号调用。漏了括号就会把 `<bound method ...>` 连同
+    #    Settings 的 repr 一起打出来 —— 而 repr 里带着 API key 和数据库密码，
+    #    等于把 .env 明文写进启动日志（2026-10-20 发现并修复）。
+    print(f"  高风险自动执行: {settings.is_high_risk_auto_exec_enabled()}  （必须为 False）")
 
     try:
         info = ping()
@@ -88,13 +97,43 @@ def preflight() -> None:
     print()
 
 
+def _make_stdout_safe() -> None:
+    """把 stdout / stderr 的编码钉成 UTF-8，且永不因编码失败中断启动。
+
+    ⚠️ 这不是洁癖，是真实事故（2026-10-20）：启动横幅里有电价描述，形如
+    `谷(23:00-07:00 ¥0.38)`，那个 `¥` 是 U+00A5 —— **GBK 里没有这个字符**
+    （GBK 只有全角 ￥ U+FFE5）。于是：
+
+    - 在控制台直接跑：Python 3.6+ 按 PEP 528 用 UTF-8 输出，没事；
+    - 被 `start_dev.py` 用 `Popen(stdout=文件)` 重定向时：Python 按 **locale（GBK）**
+      编码，`print` 当场抛 `UnicodeEncodeError`，**服务在 preflight 阶段就崩了**，
+      而 API 一行都没跑起来。
+
+    为什么我本地测不出来：我的终端环境恰好有 `PYTHONIOENCODING=utf-8`，
+    而用户双击 `start.cmd` 时环境是干净的 —— 这类"只在别人机器上复现"的问题，
+    必须在代码里兜住，不能依赖外部环境变量。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            # line_buffering 同样重要：stdout 被重定向到文件时默认是**块缓冲**，
+            # 启动自检那几行会一直压在缓冲区里，直到写满 8KB 或进程退出 ——
+            # 而排障时最需要的恰恰就是"崩之前最后打印了什么"。
+            stream.reconfigure(  # type: ignore[union-attr]
+                encoding="utf-8", errors="replace", line_buffering=True
+            )
+        except Exception:  # noqa: BLE001 - 被替换成非文本流时 reconfigure 不存在
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _make_stdout_safe()
+
     # 在 uvicorn 创建事件循环之前完成平台兼容处理
     if ensure_selector_loop_on_windows():
         print("[loop] Windows 事件循环已切换为 Selector\n")
 
     args = parse_args(argv)
-    preflight()
+    preflight(host=args.host, port=args.port)
 
     import uvicorn
 

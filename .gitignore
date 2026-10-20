@@ -23,6 +23,7 @@ gateway/simulator/*.log
 *.sqlite
 *.sqlite3
 checkpoints.sqlite
+*.log
 
 # ---------------- 前端 ----------------
 node_modules/

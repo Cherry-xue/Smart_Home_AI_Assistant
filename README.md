@@ -35,6 +35,9 @@ start.cmd --web          :: 不补历史，快速启动
 start.cmd --no-web       :: 只跑后端
 ```
 
+**起不来时不用自己去翻日志**：脚本会直接把对应日志（`api.log` / `broker.log` / `web.log`）
+的最后十几行打在上面的窗口里，包括完整的 Python 报错。
+
 ### 停止：双击 `stop.cmd`（或 `python scripts/stop_dev.py`）
 
 ```bash

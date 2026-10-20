@@ -17,6 +17,7 @@ from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -53,7 +54,8 @@ class Settings(BaseSettings):
     timezone: str = "Asia/Shanghai"
 
     # ---------------- 大模型（DashScope）----------------
-    dashscope_api_key: str = ""
+    # repr=False：宁可多打几个字，也不能让 `print(settings)` 把 key 打进日志
+    dashscope_api_key: str = Field(default="", repr=False)
     dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     # ⚠️⚠️ 模型名**必须写具体版本号**，不要写 `qwen-plus` / `qwen-plus-latest` 这类
     # 动态别名——实测（2026-10-15 同一 key 同一时刻）：
@@ -79,7 +81,7 @@ class Settings(BaseSettings):
     embedding_model_name: str = "qwen3.7-text-embedding"
     # 注意：百炼实际模型 ID 是 qwen3.7-text-rerank（不是 qwen3-rerank）
     rerank_model_name: str = "qwen3.7-text-rerank"
-    tavily_api_key: str = ""
+    tavily_api_key: str = Field(default="", repr=False)
 
     # ---------------- MySQL ----------------
     mysql_host: str = "127.0.0.1"
@@ -89,17 +91,17 @@ class Settings(BaseSettings):
 
     # 应用读写账号（默认用它）
     mysql_user: str = "app_rw"
-    mysql_password: str = ""
+    mysql_password: str = Field(default="", repr=False)
     # Agent 侧只读账号（只有 SELECT）
     mysql_user_ro: str = "agent_ro"
-    mysql_password_ro: str = ""
+    mysql_password_ro: str = Field(default="", repr=False)
     # 管理账号（仅建库/DDL 时临时用，禁止出现在业务代码里）
     mysql_user_admin: str = ""
-    mysql_password_admin: str = ""
+    mysql_password_admin: str = Field(default="", repr=False)
 
     # 可选：直接给整串（若填了，优先于上面的分量）
-    database_url: str = ""
-    checkpoint_database_url: str = ""
+    database_url: str = Field(default="", repr=False)
+    checkpoint_database_url: str = Field(default="", repr=False)
 
     # ---------------- MQTT ----------------
     mqtt_host: str = "127.0.0.1"
