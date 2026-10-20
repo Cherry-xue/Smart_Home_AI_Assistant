@@ -9,28 +9,45 @@ FastAPI + MySQL + LangGraph 多 Agent 的智能家居助手，设备数据由虚
 
 ### 方式 A：一键启动（推荐）
 
+**双击项目根目录的 `start.cmd`** 即可（等价于下面这条命令）：
+
 ```bash
 # 首次 / 数据太久没更新：补 24 小时历史，然后常驻
-python scripts/start_dev.py --backfill
+python scripts/start_dev.py --backfill --web
 
 # 日常：直接常驻（不补历史）
-python scripts/start_dev.py
+python scripts/start_dev.py --web
+
+# 只想跑后端那套（不拉大屏）
+python scripts/start_dev.py --no-web
 ```
 
-它会**按正确顺序**拉起三样东西（顺序不能乱）：
+它会**按正确顺序**拉起四样东西（顺序不能乱），缺哪样补哪样：
 
 ```
-MQTT Broker（1883） → 后端 API（8000） → 虚拟设备运行时（常驻）
+MQTT Broker（1883） → 后端 API（8000） → 虚拟设备运行时（常驻） → 大屏（5174）
 ```
 
-再**另开一个终端**起大屏：
+大屏起来后会自动打开浏览器（`--no-open` 可关）。`start.cmd` 也支持传参：
+
+```bat
+start.cmd --web          :: 不补历史，快速启动
+start.cmd --no-web       :: 只跑后端
+```
+
+### 停止：双击 `stop.cmd`（或 `python scripts/stop_dev.py`）
 
 ```bash
-cd frontend/dashboard
-npm run dev          # → http://127.0.0.1:5173
+python scripts/stop_dev.py            # 全停：Broker + 后端 + 模拟器 + 大屏
+python scripts/stop_dev.py --dry-run  # 只看会杀哪些进程，不动手
 ```
 
-停止：在运行 `start_dev.py` 的终端按 **Ctrl+C**，会一次停掉全部子进程。
+> 不能只按端口杀 —— **虚拟设备运行时没有端口**（它只发 MQTT），
+> 只关端口会漏掉它，下次启动就变成两个模拟器同时发数据、时间线错乱。
+> 所以脚本是「按端口 + 按命令行关键字」两路一起收，再用 `taskkill /T` 杀整棵进程树
+> （`terminate()` 只杀父进程，vite / node 会留下来占端口）。
+
+如果你是在 `start_dev.py` 那个终端里，按 **Ctrl+C** 效果一样。
 
 ### 方式 B：手动三步
 
@@ -179,14 +196,18 @@ python scripts/seed_second_home.py --reset  # 重建（⚠️ 会删这套房的
 ## 六、目录
 
 ```
+start.cmd    Windows 双击一键启动（= scripts/start_dev.py --backfill --web）
+stop.cmd     Windows 双击一键停止（= scripts/stop_dev.py，--dry-run 可先看再杀）
 backend/     FastAPI 后端（app/{api,agent,services,mqtt,models,db,tools}）
 frontend/
-  dashboard/ PC 大屏（Vite + Vue3 + Element Plus + ECharts，纯 JS）
-  mobile/    手机端（uni-app 经典版，HBuilderX 打开）← 待做
+  dashboard-v2/ PC 大屏（Vite + Vue3 + Element Plus + ECharts，纯 JS）
+                ← 旧版 dashboard/ 已于 2026-10-19 移除（git 里仍可找回）
+  mobile/        手机端（uni-app 经典版，HBuilderX 打开）← 待做
 gateway/
   simulator/ 虚拟设备数据生成器（物理引擎 + 坏数据注入 + 场景）
   start_mqtt.cmd
-scripts/     start_dev.py 一键启动 / trigger_scenario.py 手动触发异常场景 /
+scripts/     start_dev.py 一键启动 / stop_dev.py 一键停止 /
+             trigger_scenario.py 手动触发异常场景 /
              seed_second_home.py 建第二套演示房 / repair_energy.py 修能耗增量
 config/      tariff.yaml（电价）、scene_intents.yaml（场景约束）、
              device_presets.yaml（可添加的预设设备）、insights_rules.yaml（告警与照护判据）、

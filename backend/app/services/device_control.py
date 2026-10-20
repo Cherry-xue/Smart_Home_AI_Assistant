@@ -32,7 +32,7 @@ import logging
 import re
 from typing import Any
 
-from sqlalchemy import select, text
+from sqlalchemy import bindparam, select, text
 from sqlalchemy.orm import Session
 
 from app.db.catalog import CapabilityRange, DeviceCatalog, DeviceInfo
@@ -211,28 +211,48 @@ def _register_manual_pending(
 
 def _expire_stale_manual(
     db: Session, *, device_id: int, capability: str, keep_id: int
-) -> None:
+) -> list[int]:
     """把同一设备、同一能力下**更早的手动待确认项**标为作废（保留 `keep_id`）。
 
     没有这一步的话，用户在面板上连点三次"解锁"就会攒出三张一模一样的待办；
     更糟的是批准其中任意一张都会真的下发一次 —— 等于重复开锁。
+
+    ⚠️ 库里作废还不够：待确认项同时登记在**进程内存** `_PENDING` 里，
+    只改库的结果是"库里只剩一条、接口还列三条"。所以这里把作废掉的
+    command_id 一并返回，调用方负责把内存里那几条也摘掉，两边必须同步。
     """
+    stale = [
+        int(r[0])
+        for r in db.execute(
+            text(
+                """
+                SELECT id
+                  FROM device_commands
+                 WHERE device_id = :d
+                   AND command = :c
+                   AND status = 'pending_confirm'
+                   AND id < :keep
+                   AND JSON_UNQUOTE(JSON_EXTRACT(params_json, '$.source')) = 'dashboard'
+                """
+            ),
+            {"d": device_id, "c": capability, "keep": keep_id},
+        ).fetchall()
+    ]
+    if not stale:
+        return []
     db.execute(
         text(
             """
             UPDATE device_commands
                SET status = 'expired',
                    result_message = '被同一设备的新指令取代，自动作废'
-             WHERE device_id = :d
-               AND command = :c
-               AND status = 'pending_confirm'
-               AND id < :keep
-               AND JSON_UNQUOTE(JSON_EXTRACT(params_json, '$.source')) = 'dashboard'
+             WHERE id IN :ids
             """
-        ),
-        {"d": device_id, "c": capability, "keep": keep_id},
+        ).bindparams(bindparam("ids", expanding=True)),
+        {"ids": stale},
     )
     db.commit()
+    return stale
 
 
 def run_command(
@@ -301,9 +321,16 @@ def run_command(
             # 连点三次"解锁"不该攒三张待办：更早的手动待确认项直接作废。
             # ⚠️ 只动 source=dashboard 的行 —— Agent 的待确认有它自己的中断索引，
             #    在这里改状态会让"库里有、内存里没有"两边对不上。
-            _expire_stale_manual(
+            stale_ids = _expire_stale_manual(
                 db, device_id=device.id, capability=capability, keep_id=final.command_id
             )
+            # 库里作废了、内存里还挂着 → 接口会列出来但批准时又会被拦，
+            # 用户看到的就是"一堆点不动的待办"。两边必须一起清。
+            if stale_ids:
+                from app.agent.runner import clear_pending
+
+                for cid in stale_ids:
+                    clear_pending(f"{MANUAL_PENDING_PREFIX}{cid}")
             _register_manual_pending(
                 thread_id=f"{MANUAL_PENDING_PREFIX}{final.command_id}",
                 device=device,

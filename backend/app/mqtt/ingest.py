@@ -44,10 +44,12 @@ from app.db.session import SessionLocal
 from app.models.orm import DeviceReading, EnergyReading, SensorEvent
 from app.mqtt.cache import LatestValueCache
 from app.mqtt.envelope import (
+    CONTROL_KINDS,
     READING_KINDS,
     Envelope,
     EnvelopeError,
     parse,
+    parse_topic,
     to_local_naive,
 )
 from app.mqtt.quality import QualityEvaluator
@@ -170,6 +172,20 @@ class Ingestor:
         """
         self.stats.received += 1
         self.stats.last_payload_at = dt.datetime.now()
+
+        # ⚠️ topic 末段就是 kind，先看它：后端自己发出的 `cmd` 也会被自己订阅到，
+        #    而指令只有 `issued_at`、没有 `observed_at`，拿观测数据的信封去校验
+        #    必然失败 → 每次下发都会刷一条"拒收消息"WARNING，把真正的坏消息淹掉。
+        #    控制类根本不该进这条链路，所以在解析 payload 之前就跳过。
+        try:
+            ref_kind = parse_topic(topic).kind
+        except EnvelopeError as e:
+            self.stats.rejected += 1
+            log.warning("拒收消息 topic=%s 原因=%s", topic, e)
+            return False
+        if ref_kind in CONTROL_KINDS:
+            self.stats.control_ignored += 1
+            return False
 
         try:
             ref, env = parse(topic, payload)

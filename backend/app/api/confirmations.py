@@ -209,6 +209,44 @@ def _manual_pending(catalog) -> list[InterventionOut]:
     return out
 
 
+def _collapse_manual(items: list[InterventionOut]) -> list[InterventionOut]:
+    """同一设备、同一能力的手动待办只保留**最新**那条。
+
+    thread_id 形如 `manual-cmd-{command_id}`，编号越大越新。
+    不收敛的话，连点三次"解锁"会给出三张一模一样的卡片。
+    """
+    from app.services.device_control import MANUAL_PENDING_PREFIX
+
+    prefix_len = len(MANUAL_PENDING_PREFIX)
+    best: dict[tuple[str | None, str | None], int] = {}
+    parsed: dict[str, int] = {}
+    for it in items:
+        tid = it.thread_id or ""
+        if not tid.startswith(MANUAL_PENDING_PREFIX):
+            continue
+        try:
+            cid = int(tid[prefix_len:])
+        except ValueError:
+            continue
+        parsed[tid] = cid
+        key = (it.device_code, it.capability)
+        if cid > best.get(key, -1):
+            best[key] = cid
+
+    out: list[InterventionOut] = []
+    emitted: set[tuple[str | None, str | None]] = set()
+    for it in items:
+        tid = it.thread_id or ""
+        if tid not in parsed:
+            out.append(it)
+            continue
+        key = (it.device_code, it.capability)
+        if parsed[tid] == best.get(key) and key not in emitted:
+            emitted.add(key)
+            out.append(it)
+    return out
+
+
 @router.get(
     "/pending",
     response_model=PendingListOut,
@@ -251,6 +289,11 @@ def list_pending(
 
     # 内存里没有的，从库里补（后端重启过就只能靠这一步）
     items.extend(i for i in _manual_pending(catalog) if i.thread_id not in seen)
+
+    # 手动待办按「设备 + 能力」收敛到最新一条：同一次连点只留最后一次。
+    # 库里那边已经在下发时作废了旧的，这里再兜一层是给"更早版本留下的残留"擦屁股
+    # —— 否则界面上会出现三张长得一样的待办，其中两张点了只会回"已处理过"。
+    items = _collapse_manual(items)
 
     # 过期时间近的排前面，让人先处理最急的；不过期的（手动待办）排前面
     items.sort(key=lambda i: (i.expires_at or "0000"))

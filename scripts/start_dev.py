@@ -1,4 +1,4 @@
-"""一键启动本地开发环境：MQTT Broker → 后端 → 虚拟设备运行时。
+"""一键启动本地开发环境：MQTT Broker → 后端 → 虚拟设备运行时 → 大屏。
 
 为什么需要这个脚本
 ------------------
@@ -15,9 +15,10 @@
 
 用法
 ----
-    python scripts/start_dev.py                 # 三个都起来（缺哪个补哪个）
-    python scripts/start_dev.py --backfill      # 额外先补 24 小时历史数据
-    python scripts/start_dev.py --speed 1       # 常驻用真实速度（默认 60 倍速）
+    python scripts/start_dev.py                 # 全套起来（缺哪个补哪个）
+    python scripts/start_dev.py --backfill       # 额外先补 24 小时历史数据
+    python scripts/start_dev.py --speed 1        # 常驻用真实速度（默认 60 倍速）
+    python scripts/start_dev.py --no-web         # 不拉起大屏（只跑后端那套）
 
 ⚠️ Mosquitto 不是 Windows 服务，每次开机都要重新起 —— 所以才有这个脚本。
    按 Ctrl+C 可以一次停掉全部子进程。
@@ -35,6 +36,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
+
+# 大屏：旧版 frontend/dashboard 已于 2026-10-19 移除，现在只剩 dashboard-v2。
+# 端口跟 vite.config.js 的默认保持一致（旧版当年占着 5173，所以 v2 出生在 5174，
+# 保持 5174 是为了不让正在开着浏览器的人突然打不开）。
+FRONTEND = ROOT / "frontend" / "dashboard-v2"
+WEB_PORT = int(os.getenv("VITE_PORT", "5174"))
 
 # Mosquitto 是 conda 装的（不在 PATH 里），路径按本机实测写死，可用环境变量覆盖
 MOSQUITTO = os.getenv(
@@ -92,6 +99,48 @@ def start(name: str, args: list[str], cwd: Path, log_name: str) -> subprocess.Po
     return proc
 
 
+def _kill(proc: subprocess.Popen) -> None:
+    """连子进程一起停。
+
+    ⚠️ Windows 上 `proc.terminate()` 只杀 `npm.cmd` 这一层，它 fork 出来的
+    `vite` / `node` 会活下来继续占着端口（下次启动就报"端口被占用"）。
+    所以这里用 `taskkill /T` 把整棵进程树一次性收掉。
+    """
+    if proc.poll() is not None:
+        return
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+            capture_output=True,
+        )
+    else:
+        proc.terminate()
+
+
+def start_web() -> subprocess.Popen | None:
+    """拉起大屏（`npm run dev`）。
+
+    放在后端之后不是随便排的：dev server 的 `/api` 走 Vite proxy 转发到 8000，
+    后端还没起来时页面会一片 502，看起来像前端坏了。
+    """
+    import shutil
+
+    if not FRONTEND.is_dir():
+        print(f"  ⚠️ 找不到大屏目录 {FRONTEND}，跳过")
+        return None
+    if not (FRONTEND / "node_modules").is_dir():
+        print("  ⚠️ 大屏依赖没装（node_modules 不存在），跳过。手动装：")
+        print(f"     cd {FRONTEND} && npm install --registry=https://registry.npmmirror.com")
+        return None
+
+    npm = shutil.which("npm.cmd") or shutil.which("npm")
+    if not npm:
+        print("  ⚠️ 找不到 npm（不在 PATH 里），跳过拉起大屏")
+        return None
+
+    return start("大屏 dev server", [npm, "run", "dev"], FRONTEND, "web.log")
+
+
 def _ingest_readings(timeout: float = 10.0) -> int | None:
     """读 `/api/health` 里的 `ingest.readings`（后端进程内累计计数）。
 
@@ -112,7 +161,9 @@ def _ingest_readings(timeout: float = 10.0) -> int | None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="一键启动：Broker + 后端 + 虚拟设备运行时")
+    ap = argparse.ArgumentParser(
+        description="一键启动：Broker + 后端 + 虚拟设备运行时 + 大屏（缺哪个补哪个）"
+    )
     ap.add_argument("--speed", type=float, default=60.0, help="常驻运行的时间倍速（1=真实时间）")
     ap.add_argument("--max-ahead", type=float, default=3.0,
                     help="模拟时间最多领先真实时间多少分钟（防止界面出现未来时间）")
@@ -128,6 +179,8 @@ def main() -> int:
         "--no-scenario-repeat", action="store_true",
         help="只触发一场异常就停（调试单个场景时用）",
     )
+    ap.add_argument("--no-web", action="store_true", help="不拉起大屏（只跑后端那套）")
+    ap.add_argument("--no-open", action="store_true", help="起来之后不自动打开浏览器")
     args = ap.parse_args()
 
     procs: list[subprocess.Popen] = []
@@ -217,15 +270,40 @@ def main() -> int:
         procs.append(p)
     time.sleep(3)
 
+    # ---- 5. 大屏（可选）----
+    web_url = f"http://127.0.0.1:{WEB_PORT}"
+    if args.no_web:
+        print(f"\n  （--no-web：不拉起大屏，自己跑 cd {FRONTEND} && npm run dev）")
+    elif port_open("127.0.0.1", WEB_PORT):
+        print(f"\n  ✓ 大屏已在运行（{WEB_PORT}）")
+    else:
+        print()
+        p = start_web()
+        if p:
+            procs.append(p)
+        if wait_port(WEB_PORT, 45):
+            print(f"  ✓ 大屏就绪（{WEB_PORT}）  → {web_url}")
+        else:
+            print(f"  ⚠️ 大屏没起来或还在编译，看 web.log（端口 {WEB_PORT}）")
+
     print()
     print("=" * 70)
     print("全部就绪")
-    print("  大屏    http://127.0.0.1:5173   （需另开终端跑 npm run dev）")
+    print(f"  大屏    {web_url}")
     print("  后端    http://127.0.0.1:8000/docs")
-    print("  日志    broker.log / api.log / simulator.log")
+    print("  日志    broker.log / api.log / simulator.log"
+          + ("" if args.no_web else " / web.log"))
     print()
     print("按 Ctrl+C 停止全部进程")
     print("=" * 70)
+
+    if not args.no_web and not args.no_open and port_open("127.0.0.1", WEB_PORT):
+        import webbrowser
+
+        try:
+            webbrowser.open(web_url)
+        except Exception:  # noqa: BLE001
+            pass
 
     try:
         while True:
@@ -236,12 +314,12 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\n  正在停止…")
         for proc in procs:
-            proc.terminate()
+            _kill(proc)
         time.sleep(1)
         for proc in procs:
             if proc.poll() is None:
-                proc.kill()
-        print("  已停止")
+                _kill(proc)
+        print("  已停止（大屏的 vite 进程树也一起收掉了）")
     return 0
 
 

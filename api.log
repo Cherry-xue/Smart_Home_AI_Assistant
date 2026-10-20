@@ -264,3 +264,841 @@ INFO:     127.0.0.1:60587 - "GET /api/confirmations/pending?include_expired=fals
 INFO:     127.0.0.1:60589 - "GET /api/health HTTP/1.1" 200 OK
 INFO:     127.0.0.1:60610 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:60609 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60614 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60615 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60621 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60620 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60633 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60632 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60635 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60653 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60657 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60656 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60672 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60715 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60714 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60728 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60729 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60752 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60751 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60790 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60797 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60796 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60824 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60846 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60848 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60853 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60870 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60871 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60875 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60876 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60882 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60881 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60884 - "GET /api/devices/30/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60894 - "GET /api/devices/22/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60895 - "GET /api/devices/24/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60899 - "GET /api/health HTTP/1.1" 200 OK
+2026-10-19 20:27:01,185 INFO    app.services.device_control | 手动控制 device=kitchen_gas_valve cap=valve_state value='closed' → pending_confirm（command_id=523）
+INFO:     127.0.0.1:60903 - "POST /api/devices/24/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60909 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60908 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60913 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+2026-10-19 20:27:07,499 INFO    app.mqtt.publisher | 已下发指令 #523 → kitchen_gas_valve.valve_state = 'closed'
+2026-10-19 20:27:07,500 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/kitchen/device/kitchen_gas_valve/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'kitchen_gas_valve', 'room_code': 'kitchen', 'kind': 'cmd', 'issued_at': '2026-10-19T20:27:07', 'command_id': 523, 'issued_by': 'human', 'source': 'backend', 'metrics': {'valve_state': 'closed'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:27:07,502 INFO    app.services.scenes.executor | 人工批准后下发成功：kitchen_gas_valve.valve_state='closed'（command_id=523）
+2026-10-19 20:27:07,502 INFO    app.api.confirmations | 手动高风险指令已批准并下发 command_id=523
+INFO:     127.0.0.1:60928 - "POST /api/confirmations/manual-cmd-523 HTTP/1.1" 200 OK
+2026-10-19 20:27:07,504 INFO    app.mqtt.subscriber | 收到设备回执 command_id=523 → 已确认
+INFO:     127.0.0.1:60930 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60933 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60947 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60946 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60959 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60958 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60968 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60969 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60988 - "GET /api/devices/3/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60987 - "GET /api/devices/2/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60986 - "GET /api/devices/1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60997 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60996 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61006 - "GET /api/chat/sessions?home_id=1&limit=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61005 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61007 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61014 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61018 - "POST /api/chat/stream HTTP/1.1" 200 OK
+2026-10-19 20:27:37,313 INFO    langchain_openai.chat_models._client_utils | langchain-openai detected HTTP_PROXY, HTTPS_PROXY, http_proxy, https_proxy and no explicit `http_socket_options` / `http_client` / `http_async_client` / `openai_proxy`; skipping the custom `httpx` transport so httpx's env-proxy auto-detection applies. Pass `http_socket_options=[...]` to opt back into kernel-level TCP keepalive tuning on top of the env proxy.
+2026-10-19 20:27:37,451 WARNING app.agent.checkpoint | 使用内存 checkpointer（仅适合开发）；中断现场在进程重启后会丢失
+2026-10-19 20:27:37,471 INFO    app.agent.graph | 已编译并缓存 Agent 图（key=(2225635257584, 1)）
+2026-10-19 20:27:40,020 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:27:40,037 INFO    app.agent.router | 路由完成 2558ms: 激活 ['scene']｜涉及房间 ['玄关']｜用户请求执行开门动作，属于具体的设备控制指令，应由负责场景编排与设备控制的 scene 助手处理。
+INFO:     127.0.0.1:61027 - "GET /api/health HTTP/1.1" 200 OK
+2026-10-19 20:27:41,565 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:27:43,005 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:27:48,976 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:27:48,989 INFO    app.agent.nodes | 编排完成：1 个候选 → 保留 1（剔除 0，其中高风险 1）
+2026-10-19 20:27:48,997 INFO    app.agent.nodes | 触发人工确认，等待批准：['入户门锁']
+INFO:     127.0.0.1:61050 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61052 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61054 - "GET /api/chat/sessions?home_id=1&limit=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61057 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61058 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+2026-10-19 20:27:50,788 INFO    app.api.confirmations | 收到人工决定 thread=web-mvf8bx39-xpg3 index=0 choice=approve 目标=入户门锁
+2026-10-19 20:27:50,793 INFO    app.agent.nodes | 复用已存在的待确认指令 #524（front_door_lock.lock_state）—— 恢复时节点会重跑，不能重复插
+2026-10-19 20:27:50,794 INFO    app.agent.nodes | 触发人工确认，等待批准：['入户门锁']
+2026-10-19 20:27:50,803 INFO    app.mqtt.publisher | 已下发指令 #524 → front_door_lock.lock_state = 'unlocked'
+2026-10-19 20:27:50,803 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:27:50', 'command_id': 524, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'unlocked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:27:50,805 INFO    app.services.scenes.executor | 人工批准后下发成功：front_door_lock.lock_state='unlocked'（command_id=524）
+2026-10-19 20:27:50,807 INFO    app.agent.runner | 恢复完成 thread=web-mvf8bx39-xpg3 中断=False 执行=success
+2026-10-19 20:27:50,807 INFO    app.mqtt.subscriber | 收到设备回执 command_id=524 → 已确认
+INFO:     127.0.0.1:61060 - "POST /api/confirmations/web-mvf8bx39-xpg3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61062 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61073 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61071 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61076 - "GET /api/scenes?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61077 - "GET /api/floorplan?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61078 - "GET /api/energy/summary?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61082 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61092 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61096 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61095 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61101 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61118 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61117 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61135 - "GET /api/devices/4/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61137 - "GET /api/devices/5/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61140 - "GET /api/devices/8/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61138 - "GET /api/devices/6/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61139 - "GET /api/devices/7/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61141 - "GET /api/devices/11/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61147 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61148 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61151 - "GET /api/energy/summary?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61154 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61155 - "GET /api/chat/sessions?home_id=1&limit=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61161 - "GET /api/chat/sessions/hist-test-2/messages?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61164 - "GET /api/chat/sessions/web-mvf8bx39-xpg3/messages?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61166 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61172 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61183 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61209 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61210 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61224 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61244 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61276 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61307 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61308 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61328 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61399 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61398 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61517 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61518 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61626 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61627 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61900 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61901 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62057 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65486 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65487 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/homes/999/rooms HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65492 - "GET /api/devices HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/devices?type=light HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/devices?room_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/devices?high_risk_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/devices/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/devices/9/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/devices/6/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/devices/999999 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65492 - "GET /api/devices/999999/capabilities HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65492 - "GET /api/devices/9/readings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/devices/9/readings?metric=humidity HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/devices/9/readings?from=2026-08-20T20%3A34%3A08.975506&to=2026-10-19T20%3A34%3A08.975506 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:65492 - "GET /api/devices/9/readings?from=2026-10-19T20%3A34%3A08.975506&to=2026-10-19T19%3A34%3A08.975506 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:65492 - "GET /api/energy/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/knowledge/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/knowledge/documents HTTP/1.1" 200 OK
+2026-10-19 20:34:09,689 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:65492 - "GET /api/knowledge/search?q=%E5%AE%A2%E5%8E%85%E7%A9%BA%E8%B0%83%E6%BB%A4%E7%BD%91%E5%A4%9A%E4%B9%85%E6%B8%85%E6%B4%97%E4%B8%80%E6%AC%A1&k=3 HTTP/1.1" 200 OK
+2026-10-19 20:34:10,077 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:65492 - "GET /api/knowledge/search?q=%E7%87%83%E6%B0%94%E6%B3%84%E6%BC%8F%E6%80%8E%E4%B9%88%E5%A4%84%E7%90%86&doc_type=emergency_plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /api/knowledge/search?q= HTTP/1.1" 422 Unprocessable Content
+2026-10-19 20:34:18,481 INFO    app.services.safety | 状态告警：新增 1 条，恢复 0 条
+INFO:     127.0.0.1:65525 - "GET /api/security/alarms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65526 - "GET /api/security/alarms?from=2026-10-15T00:00:00&to=2026-10-16T12:00:00 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65527 - "GET /api/security/alarms?from=2026-10-15T00:00:00&to=2026-10-16T12:00:00 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "GET /api/homes HTTP/1.1" 200 OK
+2026-10-19 20:34:19,854 INFO    app.services.homes_admin | 新建套房 id=90「验收临时套房 203419」，房间 3 间
+INFO:     127.0.0.1:51511 - "POST /api/homes HTTP/1.1" 201 Created
+INFO:     127.0.0.1:51511 - "GET /api/homes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "GET /api/homes/90/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "GET /api/devices?home_id=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "GET /api/floorplan?home_id=90 HTTP/1.1" 200 OK
+2026-10-19 20:34:19,880 INFO    app.services.homes_admin | 套房 90 新增房间 id=219「书房2」(code=room_4)
+INFO:     127.0.0.1:51511 - "POST /api/homes/90/rooms HTTP/1.1" 201 Created
+INFO:     127.0.0.1:51511 - "POST /api/homes/90/rooms HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:51511 - "POST /api/homes/90/rooms HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:51511 - "POST /api/homes/999999/rooms HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51511 - "GET /api/homes/90/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "POST /api/homes HTTP/1.1" 409 Conflict
+2026-10-19 20:34:19,912 INFO    app.services.homes_admin | 新建套房 id=91「空房 203419」，房间 0 间
+INFO:     127.0.0.1:51511 - "POST /api/homes HTTP/1.1" 201 Created
+2026-10-19 20:34:19,934 INFO    app.services.homes_admin | 已删除套房 id=91「空房 203419」：{'device_readings': 0, 'sensor_events': 0, 'device_commands': 0, 'energy_readings': 0, 'device_capabilities': 0, 'alarms': 0, 'care_observations': 0, 'suggestions': 0, 'memories': 0, 'conversations': 0, 'disturbance_rules': 0, 'devices': 0, 'rooms': 0}
+INFO:     127.0.0.1:51511 - "DELETE /api/homes/91?confirm=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "POST /api/homes HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:51511 - "POST /api/homes HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:51511 - "POST /api/homes HTTP/1.1" 422 Unprocessable Content
+2026-10-19 20:34:19,950 INFO    app.services.homes_admin | 新建套房 id=92「默认房名 203419」，房间 0 间
+INFO:     127.0.0.1:51511 - "POST /api/homes HTTP/1.1" 201 Created
+2026-10-19 20:34:19,969 INFO    app.services.homes_admin | 已删除套房 id=92「默认房名 203419」：{'device_readings': 0, 'sensor_events': 0, 'device_commands': 0, 'energy_readings': 0, 'device_capabilities': 0, 'alarms': 0, 'care_observations': 0, 'suggestions': 0, 'memories': 0, 'conversations': 0, 'disturbance_rules': 0, 'devices': 0, 'rooms': 0}
+INFO:     127.0.0.1:51511 - "DELETE /api/homes/92?confirm=true HTTP/1.1" 200 OK
+2026-10-19 20:34:19,982 INFO    app.services.homes_admin | 套房 90 改名：「验收临时套房 203419」→「验收临时套房 203419（改名后）」
+INFO:     127.0.0.1:51511 - "PATCH /api/homes/90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "GET /api/homes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "PATCH /api/homes/90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "PATCH /api/homes/90 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:51511 - "PATCH /api/homes/999999 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51511 - "PATCH /api/homes/90 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:51511 - "DELETE /api/homes/90 HTTP/1.1" 400 Bad Request
+2026-10-19 20:34:20,040 INFO    app.services.device_admin | 预设设备清单已加载：17 条（其中高风险 3 条）
+2026-10-19 20:34:20,054 INFO    app.services.device_admin | 新增设备 id=89 code=light_4 type=light 高风险=False（预设 light）
+2026-10-19 20:34:20,058 INFO    app.api.device_admin | 设备目录已刷新：40 台设备 / 20 个房间
+INFO:     127.0.0.1:51511 - "POST /api/devices HTTP/1.1" 201 Created
+INFO:     127.0.0.1:51511 - "GET /api/devices?home_id=90 HTTP/1.1" 200 OK
+2026-10-19 20:34:20,947 INFO    app.services.homes_admin | 已删除套房 id=90「验收临时套房 203419（改名后）」：{'device_readings': 3, 'sensor_events': 2, 'device_commands': 1, 'energy_readings': 2, 'device_capabilities': 2, 'alarms': 0, 'care_observations': 0, 'suggestions': 0, 'memories': 0, 'conversations': 0, 'disturbance_rules': 0, 'devices': 1, 'rooms': 4}
+INFO:     127.0.0.1:51511 - "DELETE /api/homes/90?confirm=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "GET /api/homes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "DELETE /api/homes/90?confirm=true HTTP/1.1" 404 Not Found
+2026-10-19 20:34:20,972 INFO    app.services.homes_admin | 新建套房 id=93「删房测试 203419」，房间 0 间
+INFO:     127.0.0.1:51511 - "POST /api/homes HTTP/1.1" 201 Created
+2026-10-19 20:34:20,984 INFO    app.services.homes_admin | 套房 93 新增房间 id=220「待删房」(code=room_1)
+INFO:     127.0.0.1:51511 - "POST /api/homes/93/rooms HTTP/1.1" 201 Created
+INFO:     127.0.0.1:51511 - "GET /api/homes/93/rooms HTTP/1.1" 200 OK
+2026-10-19 20:34:21,003 INFO    app.services.device_admin | 新增设备 id=90 code=light_4 type=light 高风险=False（预设 light）
+2026-10-19 20:34:21,008 INFO    app.api.device_admin | 设备目录已刷新：40 台设备 / 17 个房间
+INFO:     127.0.0.1:51511 - "POST /api/devices HTTP/1.1" 201 Created
+INFO:     127.0.0.1:51511 - "DELETE /api/homes/93/rooms/room_1 HTTP/1.1" 400 Bad Request
+2026-10-19 20:34:21,029 WARNING app.services.homes_admin | ⚠️ 删除房间 room_1「待删房」(id=220)：设备 1 台，清理 device_capabilities 2、device_commands 1、device_readings 3、energy_readings 2、sensor_events 2
+INFO:     127.0.0.1:51511 - "DELETE /api/homes/93/rooms/room_1?confirm=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "GET /api/homes/93/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "GET /api/devices?home_id=93 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51511 - "DELETE /api/homes/93/rooms/room_1?confirm=true HTTP/1.1" 404 Not Found
+2026-10-19 20:34:21,060 INFO    app.services.homes_admin | 已删除套房 id=93「删房测试 203419」：{'device_readings': 0, 'sensor_events': 0, 'device_commands': 0, 'energy_readings': 0, 'device_capabilities': 0, 'alarms': 0, 'care_observations': 0, 'suggestions': 0, 'memories': 0, 'conversations': 0, 'disturbance_rules': 0, 'devices': 0, 'rooms': 0}
+INFO:     127.0.0.1:51511 - "DELETE /api/homes/93?confirm=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57278 - "GET /api/floorplan HTTP/1.1" 200 OK
+2026-10-19 20:34:22,071 INFO    app.services.floorplan | 套房 1 的户型已保存：4 个区域
+INFO:     127.0.0.1:57280 - "PUT /api/floorplan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57282 - "GET /api/floorplan HTTP/1.1" 200 OK
+2026-10-19 20:34:22,104 INFO    app.services.floorplan | 套房 1 的户型已保存：3 个区域
+INFO:     127.0.0.1:57284 - "PUT /api/floorplan HTTP/1.1" 200 OK
+2026-10-19 20:34:22,123 INFO    app.services.floorplan | 套房 1 的户型已保存：3 个区域
+INFO:     127.0.0.1:57286 - "PUT /api/floorplan HTTP/1.1" 200 OK
+2026-10-19 20:34:22,144 INFO    app.services.floorplan | 套房 1 的户型已保存：4 个区域
+INFO:     127.0.0.1:57288 - "PUT /api/floorplan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57290 - "PUT /api/floorplan HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57292 - "PUT /api/floorplan HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57294 - "PUT /api/floorplan HTTP/1.1" 400 Bad Request
+2026-10-19 20:34:22,183 INFO    app.services.floorplan | 套房 1 的户型已保存：0 个区域
+INFO:     127.0.0.1:57296 - "PUT /api/floorplan HTTP/1.1" 200 OK
+2026-10-19 20:34:22,200 INFO    app.services.floorplan | 套房 1 的户型已保存：4 个区域
+INFO:     127.0.0.1:57298 - "PUT /api/floorplan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57300 - "PUT /api/floorplan HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57302 - "PUT /api/floorplan HTTP/1.1" 400 Bad Request
+2026-10-19 20:34:22,257 INFO    app.services.floorplan | 套房 1 的户型已保存：3 个区域
+INFO:     127.0.0.1:57304 - "PUT /api/floorplan HTTP/1.1" 200 OK
+2026-10-19 20:34:22,276 INFO    app.services.floorplan | 套房 1 的户型已保存：4 个区域
+INFO:     127.0.0.1:57306 - "PUT /api/floorplan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57308 - "PUT /api/floorplan HTTP/1.1" 400 Bad Request
+2026-10-19 20:34:22,432 INFO    app.services.floorplan | 套房 1 的户型底图已保存：640×480
+INFO:     127.0.0.1:57310 - "POST /api/floorplan/image HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57315 - "GET /api/floorplan/image HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57317 - "POST /api/floorplan/image HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57320 - "POST /api/floorplan/image HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57322 - "PUT /api/floorplan HTTP/1.1" 400 Bad Request
+2026-10-19 20:34:22,567 INFO    app.services.floorplan | 套房 1 的户型已保存：3 个区域
+INFO:     127.0.0.1:57324 - "PUT /api/floorplan HTTP/1.1" 200 OK
+2026-10-19 20:34:22,603 INFO    app.services.floorplan | 套房 1 的底图已删除（框选与房间保留）
+INFO:     127.0.0.1:57326 - "DELETE /api/floorplan/image HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57328 - "GET /api/floorplan/image HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57330 - "DELETE /api/floorplan/image HTTP/1.1" 400 Bad Request
+2026-10-19 20:34:22,628 INFO    app.services.floorplan | 套房 1 的户型底图已保存：640×480
+INFO:     127.0.0.1:57332 - "POST /api/floorplan/image HTTP/1.1" 200 OK
+2026-10-19 20:34:22,639 INFO    app.services.floorplan | 套房 1 的户型已保存：3 个区域
+INFO:     127.0.0.1:57334 - "PUT /api/floorplan HTTP/1.1" 200 OK
+2026-10-19 20:34:22,653 INFO    app.services.floorplan | 套房 1 的框选已重置（保留底图）
+INFO:     127.0.0.1:57336 - "POST /api/floorplan/reset?keep_background=True HTTP/1.1" 200 OK
+2026-10-19 20:34:22,699 INFO    app.services.floorplan | 套房 1 的户型已恢复默认（含删除底图）
+INFO:     127.0.0.1:57338 - "POST /api/floorplan/reset?keep_background=False HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57340 - "GET /api/floorplan/image HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57346 - "GET /api/security/alarms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57347 - "GET /api/security/alarms?from=2026-10-15T00:00:00&to=2026-10-16T12:00:00 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57348 - "GET /api/security/alarms?from=2026-10-15T00:00:00&to=2026-10-16T12:00:00 HTTP/1.1" 200 OK
+2026-10-19 20:34:28,921 INFO    app.services.safety | 告警 19 已被确认（by=None）
+INFO:     127.0.0.1:57350 - "POST /api/security/alarms/19/ack HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57351 - "GET /api/security/alarms?status=acknowledged HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57352 - "POST /api/security/alarms/999999/ack HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57353 - "POST /api/security/alarms/19/ack HTTP/1.1" 400 Bad Request
+2026-10-19 20:34:29,118 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:57354 - "GET /api/care/observations HTTP/1.1" 200 OK
+2026-10-19 20:34:29,290 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:57355 - "GET /api/care/observations HTTP/1.1" 200 OK
+2026-10-19 20:34:29,516 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:57357 - "GET /api/care/observations?member_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:34:29,590 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:57359 - "GET /api/care/observations?member_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57360 - "GET /api/suggestions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57361 - "GET /api/suggestions?level=silent HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57363 - "POST /api/suggestions/999999/dismiss HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57364 - "GET /api/security/alarms?from=2026-10-16T12:00:00&to=2026-10-15T00:00:00 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57365 - "GET /api/security/alarms?from=2026-01-01T00:00:00&to=2026-10-16T00:00:00 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57366 - "GET /api/security/alarms?sync=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57367 - "GET /api/care/observations?sync=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57368 - "GET /api/security/alarms?level=critical HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57419 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57421 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57422 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57423 - "GET /api/devices HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57424 - "GET /api/devices/1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57425 - "GET /api/devices/1/readings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57428 - "GET /api/energy/summary HTTP/1.1" 200 OK
+2026-10-19 20:34:42,200 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:57429 - "POST /api/scenes/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57453 - "GET /api/scenes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57454 - "GET /api/knowledge/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57455 - "GET /api/knowledge/documents HTTP/1.1" 200 OK
+2026-10-19 20:34:42,492 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:57456 - "GET /api/knowledge/search?q=%E7%A9%BA%E8%B0%83%E6%BB%A4%E7%BD%91%E5%A4%9A%E4%B9%85%E6%B8%85%E6%B4%97%E4%B8%80%E6%AC%A1 HTTP/1.1" 200 OK
+2026-10-19 20:34:42,499 INFO    app.api.chat | 收到提问 thread=c-20261019-2fb9005f: 现在家里耗电情况怎么样
+2026-10-19 20:34:44,566 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:34:44,568 INFO    app.agent.router | 路由完成 2067ms: 激活 ['energy']｜涉及房间 未指定｜用户询问家庭耗电情况，属于能源优化领域的查询需求，需激活 energy 助手获取数据。
+2026-10-19 20:34:46,124 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:34:48,640 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:34:56,920 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:34:56,929 INFO    app.agent.runner | 对话完成 thread=c-20261019-2fb9005f 中断=False 结论=能源优化：过去24小时总用电2.39 kWh，电费1.81元；休息区空调是绝对主力（占96.9%电量），且主要在平电时段
+INFO:     127.0.0.1:57461 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57477 - "GET /api/confirmations/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57488 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57489 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+2026-10-19 20:35:33,450 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 527, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 40}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,454 INFO    app.mqtt.subscriber | 收到设备回执 command_id=527 → 已确认
+2026-10-19 20:35:33,501 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 528, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,505 INFO    app.mqtt.subscriber | 收到设备回执 command_id=528 → 已确认
+2026-10-19 20:35:33,507 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 529, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,511 INFO    app.mqtt.subscriber | 收到设备回执 command_id=529 → 已确认
+2026-10-19 20:35:33,514 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 530, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,517 INFO    app.mqtt.subscriber | 收到设备回执 command_id=530 → 已确认
+2026-10-19 20:35:33,548 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 531, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'locked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,554 INFO    app.mqtt.subscriber | 收到设备回执 command_id=531 → 已确认
+2026-10-19 20:35:33,592 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 532, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,595 INFO    app.mqtt.subscriber | 收到设备回执 command_id=532 → 已确认
+2026-10-19 20:35:33,596 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 533, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,599 INFO    app.mqtt.subscriber | 收到设备回执 command_id=533 → 已确认
+2026-10-19 20:35:33,601 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 534, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,605 INFO    app.mqtt.subscriber | 收到设备回执 command_id=534 → 已确认
+2026-10-19 20:35:33,653 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 536, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,655 INFO    app.mqtt.subscriber | 收到设备回执 command_id=536 → 已确认
+2026-10-19 20:35:33,656 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 537, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,658 INFO    app.mqtt.subscriber | 收到设备回执 command_id=537 → 已确认
+2026-10-19 20:35:33,659 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 538, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,662 INFO    app.mqtt.subscriber | 收到设备回执 command_id=538 → 已确认
+2026-10-19 20:35:33,697 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 540, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,700 INFO    app.mqtt.subscriber | 收到设备回执 command_id=540 → 已确认
+2026-10-19 20:35:33,701 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 541, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,703 INFO    app.mqtt.subscriber | 收到设备回执 command_id=541 → 已确认
+2026-10-19 20:35:33,704 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:35:33', 'command_id': 542, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:35:33,707 INFO    app.mqtt.subscriber | 收到设备回执 command_id=542 → 已确认
+INFO:     127.0.0.1:57568 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57572 - "GET /api/chat/sessions?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57576 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57587 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57588 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57590 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:36:06,351 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='unlocked' → pending_confirm（command_id=544）
+INFO:     127.0.0.1:57592 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57594 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57596 - "POST /api/confirmations/manual-cmd-544 HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:57610 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:36:12,383 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='locked' → pending_confirm（command_id=545）
+INFO:     127.0.0.1:57612 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57614 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57616 - "POST /api/confirmations/manual-cmd-544 HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:57618 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:36:15,414 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='locked' → pending_confirm（command_id=546）
+INFO:     127.0.0.1:57620 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57622 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57624 - "POST /api/confirmations/manual-cmd-544 HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:57631 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57635 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57669 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57671 - "POST /api/confirmations/manual-cmd-544 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57673 - "POST /api/confirmations/manual-cmd-545 HTTP/1.1" 200 OK
+2026-10-19 20:36:42,682 INFO    app.api.confirmations | 手动高风险指令被驳回 command_id=546
+INFO:     127.0.0.1:57675 - "POST /api/confirmations/manual-cmd-546 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57677 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57679 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:36:42,703 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='unlocked' → pending_confirm（command_id=547）
+INFO:     127.0.0.1:57681 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57683 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:36:42,718 INFO    app.mqtt.publisher | 已下发指令 #547 → front_door_lock.lock_state = 'unlocked'
+2026-10-19 20:36:42,719 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:36:42', 'command_id': 547, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'unlocked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:36:42,721 INFO    app.services.scenes.executor | 人工批准后下发成功：front_door_lock.lock_state='unlocked'（command_id=547）
+2026-10-19 20:36:42,721 INFO    app.api.confirmations | 手动高风险指令已批准并下发 command_id=547
+INFO:     127.0.0.1:57685 - "POST /api/confirmations/manual-cmd-547 HTTP/1.1" 200 OK
+2026-10-19 20:36:42,722 INFO    app.mqtt.subscriber | 收到设备回执 command_id=547 → 已确认
+INFO:     127.0.0.1:57687 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:36:48,738 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='locked' → pending_confirm（command_id=548）
+INFO:     127.0.0.1:57689 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57691 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:36:48,755 INFO    app.api.confirmations | 手动高风险指令被驳回 command_id=548
+INFO:     127.0.0.1:57693 - "POST /api/confirmations/manual-cmd-548 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57696 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:36:51,770 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='locked' → pending_confirm（command_id=549）
+INFO:     127.0.0.1:57698 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57700 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:36:51,785 INFO    app.mqtt.publisher | 已下发指令 #549 → front_door_lock.lock_state = 'locked'
+2026-10-19 20:36:51,786 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:36:51', 'command_id': 549, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'locked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:36:51,789 INFO    app.services.scenes.executor | 人工批准后下发成功：front_door_lock.lock_state='locked'（command_id=549）
+2026-10-19 20:36:51,789 INFO    app.api.confirmations | 手动高风险指令已批准并下发 command_id=549
+INFO:     127.0.0.1:57702 - "POST /api/confirmations/manual-cmd-549 HTTP/1.1" 200 OK
+2026-10-19 20:36:51,790 INFO    app.mqtt.subscriber | 收到设备回执 command_id=549 → 已确认
+INFO:     127.0.0.1:57717 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57719 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:36:57,815 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='unlocked' → pending_confirm（command_id=550）
+INFO:     127.0.0.1:57721 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+2026-10-19 20:36:57,829 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='locked' → pending_confirm（command_id=551）
+INFO:     127.0.0.1:57723 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+2026-10-19 20:36:57,845 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='unlocked' → pending_confirm（command_id=552）
+INFO:     127.0.0.1:57725 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57727 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57729 - "POST /api/confirmations/manual-cmd-550 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57731 - "POST /api/confirmations/manual-cmd-551 HTTP/1.1" 200 OK
+2026-10-19 20:36:57,872 INFO    app.api.confirmations | 手动高风险指令被驳回 command_id=552
+INFO:     127.0.0.1:57733 - "POST /api/confirmations/manual-cmd-552 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57740 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57741 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57817 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57818 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     Started server process [36208]
+INFO:     Waiting for application startup.
+2026-10-19 20:38:55,699 INFO    app.main | 启动中… 环境=development 数据源=mqtt 时区=Asia/Shanghai
+2026-10-19 20:38:55,710 INFO    app.main | 设备目录已加载：39 台设备 / 16 个房间
+2026-10-19 20:38:58,761 INFO    app.main | 缓存预热完成：扫描 73 行 → 覆盖 39 台设备 / 填入 73 个值（最近 2 天）
+2026-10-19 20:38:58,763 INFO    app.main | MQTT 订阅线程已启动 → 127.0.0.1:1883（独立线程，自带事件循环）
+2026-10-19 20:38:58,763 INFO    app.main | 服务就绪 → http://127.0.0.1:8000/docs
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-10-19 20:38:58,766 INFO    app.mqtt.subscriber | 已连接 127.0.0.1:1883，订阅 smart_home/#
+[loop] Windows 事件循环已切换为 Selector
+
+==============================================================================
+智能家居 AI 助手 · API 启动自检
+==============================================================================
+  监听地址    : http://0.0.0.0:8000
+                （已允许局域网访问 —— 手机端可直连本机 IP）
+  环境 / 数据源: development / mqtt
+  业务时区    : Asia/Shanghai
+  电价时段    : valley(21:00-08:00 ¥0.35) · peak(08:00-11:00 ¥1.20) · flat(11:00-18:00 ¥0.75) · peak(18:00-21:00 ¥1.20)
+  高风险自动执行: <bound method Settings.is_high_risk_auto_exec_enabled of Settings(app_env='development', data_mode='mqtt', checkpoint_backend='memory', timezone='Asia/Shanghai', dashscope_api_key='sk-ws-H.ELDHREM.WUSr.MEUCIQDmeoiyy-Y_3hrdzcHMWNAp7gjW9Z0H1cZxsPVBxOtEqwIgM3tdcV0xs9WF5t7J-oPhsRm1GzOCL4XZqIJFXNMQ88w', dashscope_base_url='https://dashscope.aliyuncs.com/compatible-mode/v1', qwen_model_name='qwen3.7-plus', llm_disable_thinking=True, embedding_model_name='qwen3.7-text-embedding', rerank_model_name='qwen3.7-text-rerank', tavily_api_key='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', mysql_host='192.168.159.100', mysql_port=3306, mysql_db='smart_home', mysql_db_checkpoint='smart_home_checkpoint', mysql_user='app_rw', mysql_password='AppRw@2026', mysql_user_ro='agent_ro', mysql_password_ro='AgentRo@2026', mysql_user_admin='root', mysql_password_admin='123456', database_url='mysql+pymysql://app_rw:AppRw%402026@192.168.159.100:3306/smart_home?charset=utf8mb4', checkpoint_database_url='mysql+pymysql://app_rw:AppRw%402026@192.168.159.100:3306/smart_home_checkpoint?charset=utf8mb4', mqtt_host='127.0.0.1', mqtt_port=1883, mqtt_username='', mqtt_password='', mqtt_client_id_prefix='smart_home_sim', api_host='127.0.0.1', api_port=8000, cors_origins='', allow_lan=True, high_risk_auto_exec=False, quiet_hours_default='22:00-07:00')>  （必须为 False）
+  数据库      : ✅ 192.168.159.100:3306/smart_home  MySQL 8.0.27 / utf8mb4 / app_rw@192.168.159.%
+  MQTT broker : 127.0.0.1:1883（订阅服务会在独立线程里连接；broker 没起时接口仍可用，但数据不进库）
+==============================================================================
+
+INFO:     127.0.0.1:57907 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57906 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57912 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57928 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57930 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57932 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:39:14,401 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='unlocked' → pending_confirm（command_id=553）
+INFO:     127.0.0.1:57934 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+2026-10-19 20:39:14,413 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='locked' → pending_confirm（command_id=554）
+INFO:     127.0.0.1:57936 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+2026-10-19 20:39:14,425 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='unlocked' → pending_confirm（command_id=555）
+INFO:     127.0.0.1:57938 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57940 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:39:14,443 INFO    app.mqtt.publisher | 指令发布客户端已连接 127.0.0.1:1883
+2026-10-19 20:39:14,444 INFO    app.mqtt.publisher | 已下发指令 #555 → front_door_lock.lock_state = 'unlocked'
+2026-10-19 20:39:14,446 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:39:14', 'command_id': 555, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'unlocked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:39:14,448 INFO    app.services.scenes.executor | 人工批准后下发成功：front_door_lock.lock_state='unlocked'（command_id=555）
+2026-10-19 20:39:14,448 INFO    app.api.confirmations | 手动高风险指令已批准并下发 command_id=555
+INFO:     127.0.0.1:57942 - "POST /api/confirmations/manual-cmd-555 HTTP/1.1" 200 OK
+2026-10-19 20:39:14,448 INFO    app.mqtt.subscriber | 收到设备回执 command_id=555 → 已确认
+INFO:     127.0.0.1:57947 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:39:20,465 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='locked' → pending_confirm（command_id=556）
+INFO:     127.0.0.1:57949 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57951 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:39:20,482 INFO    app.mqtt.publisher | 已下发指令 #556 → front_door_lock.lock_state = 'locked'
+2026-10-19 20:39:20,483 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:39:20', 'command_id': 556, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'locked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:39:20,486 INFO    app.services.scenes.executor | 人工批准后下发成功：front_door_lock.lock_state='locked'（command_id=556）
+2026-10-19 20:39:20,486 INFO    app.api.confirmations | 手动高风险指令已批准并下发 command_id=556
+INFO:     127.0.0.1:57953 - "POST /api/confirmations/manual-cmd-556 HTTP/1.1" 200 OK
+2026-10-19 20:39:20,487 INFO    app.mqtt.subscriber | 收到设备回执 command_id=556 → 已确认
+INFO:     127.0.0.1:57965 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57967 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/homes/999/rooms HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57983 - "GET /api/devices HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/devices?type=light HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/devices?room_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/devices?high_risk_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/devices/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/devices/9/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/devices/6/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/devices/999999 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57983 - "GET /api/devices/999999/capabilities HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57983 - "GET /api/devices/9/readings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/devices/9/readings?metric=humidity HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/devices/9/readings?from=2026-08-20T20%3A39%3A35.728576&to=2026-10-19T20%3A39%3A35.728576 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57983 - "GET /api/devices/9/readings?from=2026-10-19T20%3A39%3A35.728576&to=2026-10-19T19%3A39%3A35.728576 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57983 - "GET /api/energy/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/knowledge/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/knowledge/documents HTTP/1.1" 200 OK
+2026-10-19 20:39:37,625 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:57983 - "GET /api/knowledge/search?q=%E5%AE%A2%E5%8E%85%E7%A9%BA%E8%B0%83%E6%BB%A4%E7%BD%91%E5%A4%9A%E4%B9%85%E6%B8%85%E6%B4%97%E4%B8%80%E6%AC%A1&k=3 HTTP/1.1" 200 OK
+2026-10-19 20:39:37,973 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:57983 - "GET /api/knowledge/search?q=%E7%87%83%E6%B0%94%E6%B3%84%E6%BC%8F%E6%80%8E%E4%B9%88%E5%A4%84%E7%90%86&doc_type=emergency_plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57983 - "GET /api/knowledge/search?q= HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:57990 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57991 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57992 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57993 - "GET /api/devices HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57994 - "GET /api/devices/1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57995 - "GET /api/devices/1/readings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57997 - "GET /api/energy/summary HTTP/1.1" 200 OK
+2026-10-19 20:39:39,817 INFO    langchain_openai.chat_models._client_utils | langchain-openai detected HTTP_PROXY, HTTPS_PROXY, http_proxy, https_proxy and no explicit `http_socket_options` / `http_client` / `http_async_client` / `openai_proxy`; skipping the custom `httpx` transport so httpx's env-proxy auto-detection applies. Pass `http_socket_options=[...]` to opt back into kernel-level TCP keepalive tuning on top of the env proxy.
+2026-10-19 20:39:46,139 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:57998 - "POST /api/scenes/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58016 - "GET /api/scenes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58017 - "GET /api/knowledge/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58018 - "GET /api/knowledge/documents HTTP/1.1" 200 OK
+2026-10-19 20:39:46,619 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:58019 - "GET /api/knowledge/search?q=%E7%A9%BA%E8%B0%83%E6%BB%A4%E7%BD%91%E5%A4%9A%E4%B9%85%E6%B8%85%E6%B4%97%E4%B8%80%E6%AC%A1 HTTP/1.1" 200 OK
+2026-10-19 20:39:46,627 INFO    app.api.chat | 收到提问 thread=c-20261019-78881cea: 现在家里耗电情况怎么样
+2026-10-19 20:39:46,806 WARNING app.agent.checkpoint | 使用内存 checkpointer（仅适合开发）；中断现场在进程重启后会丢失
+2026-10-19 20:39:46,828 INFO    app.agent.graph | 已编译并缓存 Agent 图（key=(2551874170432, 1)）
+2026-10-19 20:39:48,937 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:39:48,948 INFO    app.agent.router | 路由完成 2117ms: 激活 ['energy']｜涉及房间 未指定｜用户询问家里耗电情况，属于能源优化领域的能耗数据查询，需激活 energy 助手获取数据。
+2026-10-19 20:39:50,448 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:39:52,466 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:40:00,492 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:40:00,499 INFO    app.agent.runner | 对话完成 thread=c-20261019-78881cea 中断=False 结论=能源优化：过去24小时总用电2.39 kWh，电费1.81元；休息区空调是主要耗电设备（占96.9%），用电集中在平电时
+INFO:     127.0.0.1:58024 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57111 - "GET /api/confirmations/pending HTTP/1.1" 200 OK
+2026-10-19 20:40:01,129 INFO    app.services.safety | 状态告警：新增 0 条，恢复 1 条
+INFO:     127.0.0.1:57112 - "GET /api/security/alarms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57113 - "GET /api/security/alarms?from=2026-10-15T00:00:00&to=2026-10-16T12:00:00 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57114 - "GET /api/security/alarms?from=2026-10-15T00:00:00&to=2026-10-16T12:00:00 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57117 - "POST /api/security/alarms/999999/ack HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57118 - "POST /api/security/alarms/1/ack HTTP/1.1" 400 Bad Request
+2026-10-19 20:40:02,234 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:57119 - "GET /api/care/observations HTTP/1.1" 200 OK
+2026-10-19 20:40:02,445 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:57120 - "GET /api/care/observations HTTP/1.1" 200 OK
+2026-10-19 20:40:02,550 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:57122 - "GET /api/care/observations?member_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:40:02,645 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:57123 - "GET /api/care/observations?member_id=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57124 - "GET /api/suggestions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57125 - "GET /api/suggestions?level=silent HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57127 - "POST /api/suggestions/999999/dismiss HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57128 - "GET /api/security/alarms?from=2026-10-16T12:00:00&to=2026-10-15T00:00:00 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57129 - "GET /api/security/alarms?from=2026-01-01T00:00:00&to=2026-10-16T00:00:00 HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57130 - "GET /api/security/alarms?sync=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57131 - "GET /api/care/observations?sync=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57132 - "GET /api/security/alarms?level=critical HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57137 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57138 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+2026-10-19 20:40:15,712 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 557, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 40}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,719 INFO    app.mqtt.subscriber | 收到设备回执 command_id=557 → 已确认
+2026-10-19 20:40:15,753 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 558, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,759 INFO    app.mqtt.subscriber | 收到设备回执 command_id=558 → 已确认
+2026-10-19 20:40:15,760 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 559, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,764 INFO    app.mqtt.subscriber | 收到设备回执 command_id=559 → 已确认
+2026-10-19 20:40:15,766 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 560, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,770 INFO    app.mqtt.subscriber | 收到设备回执 command_id=560 → 已确认
+2026-10-19 20:40:15,800 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 561, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'locked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,804 INFO    app.mqtt.subscriber | 收到设备回执 command_id=561 → 已确认
+2026-10-19 20:40:15,843 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 562, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,846 INFO    app.mqtt.subscriber | 收到设备回执 command_id=562 → 已确认
+2026-10-19 20:40:15,847 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 563, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,850 INFO    app.mqtt.subscriber | 收到设备回执 command_id=563 → 已确认
+2026-10-19 20:40:15,853 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 564, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,855 INFO    app.mqtt.subscriber | 收到设备回执 command_id=564 → 已确认
+2026-10-19 20:40:15,910 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 566, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,913 INFO    app.mqtt.subscriber | 收到设备回执 command_id=566 → 已确认
+2026-10-19 20:40:15,915 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 567, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,917 INFO    app.mqtt.subscriber | 收到设备回执 command_id=567 → 已确认
+2026-10-19 20:40:15,919 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 568, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,922 INFO    app.mqtt.subscriber | 收到设备回执 command_id=568 → 已确认
+2026-10-19 20:40:15,962 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_light_main/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_light_main', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 570, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'brightness': 30}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,966 INFO    app.mqtt.subscriber | 收到设备回执 command_id=570 → 已确认
+2026-10-19 20:40:15,968 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_curtain/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_curtain', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 571, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'position': 0}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,971 INFO    app.mqtt.subscriber | 收到设备回执 command_id=571 → 已确认
+2026-10-19 20:40:15,973 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/living_room/device/living_room_tv/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'living_room_tv', 'room_code': 'living_room', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:15', 'command_id': 572, 'issued_by': 'agent', 'source': 'backend', 'metrics': {'power_on': True}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:15,976 INFO    app.mqtt.subscriber | 收到设备回执 command_id=572 → 已确认
+INFO:     127.0.0.1:57210 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57212 - "POST /api/chat/stream HTTP/1.1" 200 OK
+2026-10-19 20:40:43,907 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:40:43,909 INFO    app.agent.router | 路由完成 2447ms: 激活 ['security']｜涉及房间 ['玄关']｜用户请求解锁入户门，属于门禁控制与安防范畴，需由 security 助手执行身份验证并操作门锁。
+2026-10-19 20:40:45,915 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:40:47,279 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:40:49,057 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:40:54,650 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:40:54,654 INFO    app.agent.nodes | 编排完成：1 个候选 → 保留 1（剔除 0，其中高风险 1）
+2026-10-19 20:40:54,663 INFO    app.agent.nodes | 触发人工确认，等待批准：['入户门锁']
+INFO:     127.0.0.1:57233 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:40:54,680 INFO    app.api.confirmations | 收到人工决定 thread=c-20261019-7f0ef701 index=0 choice=approve 目标=入户门锁
+2026-10-19 20:40:54,684 INFO    app.agent.nodes | 复用已存在的待确认指令 #574（front_door_lock.lock_state）—— 恢复时节点会重跑，不能重复插
+2026-10-19 20:40:54,684 INFO    app.agent.nodes | 触发人工确认，等待批准：['入户门锁']
+2026-10-19 20:40:54,689 INFO    app.mqtt.publisher | 已下发指令 #574 → front_door_lock.lock_state = 'unlocked'
+2026-10-19 20:40:54,690 WARNING app.mqtt.ingest | 拒收消息 topic=smart_home/1/room/entryway/device/front_door_lock/cmd 原因=信封字段校验失败: [{'type': 'missing', 'loc': ('observed_at',), 'msg': 'Field required', 'input': {'device_code': 'front_door_lock', 'room_code': 'entryway', 'kind': 'cmd', 'issued_at': '2026-10-19T20:40:54', 'command_id': 574, 'issued_by': 'human', 'source': 'backend', 'metrics': {'lock_state': 'unlocked'}, 'units': {}}, 'url': 'https://errors.pydantic.dev/2.13/v/missing'}]
+2026-10-19 20:40:54,693 INFO    app.services.scenes.executor | 人工批准后下发成功：front_door_lock.lock_state='unlocked'（command_id=574）
+2026-10-19 20:40:54,694 INFO    app.mqtt.subscriber | 收到设备回执 command_id=574 → 已确认
+2026-10-19 20:40:54,694 INFO    app.agent.runner | 恢复完成 thread=c-20261019-7f0ef701 中断=False 执行=success
+INFO:     127.0.0.1:57235 - "POST /api/confirmations/c-20261019-7f0ef701 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57246 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57247 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57249 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57263 - "GET /api/confirmations/pending?include_expired=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57308 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57309 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57324 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51881 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51882 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     Started server process [1076]
+INFO:     Waiting for application startup.
+2026-10-19 20:43:23,390 INFO    app.main | 启动中… 环境=development 数据源=mqtt 时区=Asia/Shanghai
+2026-10-19 20:43:23,402 INFO    app.main | 设备目录已加载：39 台设备 / 16 个房间
+2026-10-19 20:43:26,663 INFO    app.main | 缓存预热完成：扫描 73 行 → 覆盖 39 台设备 / 填入 73 个值（最近 2 天）
+2026-10-19 20:43:26,665 INFO    app.main | MQTT 订阅线程已启动 → 127.0.0.1:1883（独立线程，自带事件循环）
+2026-10-19 20:43:26,665 INFO    app.main | 服务就绪 → http://127.0.0.1:8000/docs
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-10-19 20:43:26,668 INFO    app.mqtt.subscriber | 已连接 127.0.0.1:1883，订阅 smart_home/#
+[loop] Windows 事件循环已切换为 Selector
+
+==============================================================================
+智能家居 AI 助手 · API 启动自检
+==============================================================================
+  监听地址    : http://0.0.0.0:8000
+                （已允许局域网访问 —— 手机端可直连本机 IP）
+  环境 / 数据源: development / mqtt
+  业务时区    : Asia/Shanghai
+  电价时段    : valley(21:00-08:00 ¥0.35) · peak(08:00-11:00 ¥1.20) · flat(11:00-18:00 ¥0.75) · peak(18:00-21:00 ¥1.20)
+  高风险自动执行: <bound method Settings.is_high_risk_auto_exec_enabled of Settings(app_env='development', data_mode='mqtt', checkpoint_backend='memory', timezone='Asia/Shanghai', dashscope_api_key='sk-ws-H.ELDHREM.WUSr.MEUCIQDmeoiyy-Y_3hrdzcHMWNAp7gjW9Z0H1cZxsPVBxOtEqwIgM3tdcV0xs9WF5t7J-oPhsRm1GzOCL4XZqIJFXNMQ88w', dashscope_base_url='https://dashscope.aliyuncs.com/compatible-mode/v1', qwen_model_name='qwen3.7-plus', llm_disable_thinking=True, embedding_model_name='qwen3.7-text-embedding', rerank_model_name='qwen3.7-text-rerank', tavily_api_key='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', mysql_host='192.168.159.100', mysql_port=3306, mysql_db='smart_home', mysql_db_checkpoint='smart_home_checkpoint', mysql_user='app_rw', mysql_password='AppRw@2026', mysql_user_ro='agent_ro', mysql_password_ro='AgentRo@2026', mysql_user_admin='root', mysql_password_admin='123456', database_url='mysql+pymysql://app_rw:AppRw%402026@192.168.159.100:3306/smart_home?charset=utf8mb4', checkpoint_database_url='mysql+pymysql://app_rw:AppRw%402026@192.168.159.100:3306/smart_home_checkpoint?charset=utf8mb4', mqtt_host='127.0.0.1', mqtt_port=1883, mqtt_username='', mqtt_password='', mqtt_client_id_prefix='smart_home_sim', api_host='127.0.0.1', api_port=8000, cors_origins='', allow_lan=True, high_risk_auto_exec=False, quiet_hours_default='22:00-07:00')>  （必须为 False）
+  数据库      : ✅ 192.168.159.100:3306/smart_home  MySQL 8.0.27 / utf8mb4 / app_rw@192.168.159.%
+  MQTT broker : 127.0.0.1:1883（订阅服务会在独立线程里连接；broker 没起时接口仍可用，但数据不进库）
+==============================================================================
+
+INFO:     127.0.0.1:51940 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:43:35,520 INFO    app.services.device_control | 手动控制 device=front_door_lock cap=lock_state value='locked' → pending_confirm（command_id=575）
+INFO:     127.0.0.1:51942 - "POST /api/devices/2/command HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51944 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:43:35,557 INFO    app.mqtt.publisher | 指令发布客户端已连接 127.0.0.1:1883
+2026-10-19 20:43:35,558 INFO    app.mqtt.publisher | 已下发指令 #575 → front_door_lock.lock_state = 'locked'
+2026-10-19 20:43:35,592 INFO    app.services.scenes.executor | 人工批准后下发成功：front_door_lock.lock_state='locked'（command_id=575）
+2026-10-19 20:43:35,592 INFO    app.api.confirmations | 手动高风险指令已批准并下发 command_id=575
+INFO:     127.0.0.1:51946 - "POST /api/confirmations/manual-cmd-575 HTTP/1.1" 200 OK
+2026-10-19 20:43:35,599 INFO    app.mqtt.subscriber | 收到设备回执 command_id=575 → 已确认
+INFO:     127.0.0.1:51967 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51969 - "GET /api/confirmations/pending?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51978 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51979 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51986 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51987 - "GET /api/scenes?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51989 - "GET /api/floorplan?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51985 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51988 - "GET /api/energy/summary?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51993 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52001 - "GET /api/chat/sessions?home_id=1&limit=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52000 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52010 - "GET /api/chat/sessions/c-20261019-7f0ef701/messages?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52012 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52021 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52042 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52043 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52050 - "GET /api/overview?home_id=1 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52052 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52054 - "GET /api/energy?home_id=1&range=day HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52056 - "GET /api/alarms?home_id=1 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52058 - "GET /api/care?home_id=1 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52060 - "GET /api/suggestions?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52064 - "GET /api/floorplan?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52066 - "GET /api/homes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52068 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52070 - "GET /api/overview?home_id=2 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52072 - "GET /api/devices?home_id=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52090 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52092 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52097 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52101 - "GET /api/energy/summary?home_id=1&range=day HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52103 - "GET /api/security/alarms?home_id=1 HTTP/1.1" 200 OK
+2026-10-19 20:44:37,609 INFO    app.services.care | 照护观察：新增 1 条，更新 0 条
+INFO:     127.0.0.1:52105 - "GET /api/care/observations?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52107 - "GET /api/suggestions?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52109 - "GET /api/knowledge/status HTTP/1.1" 200 OK
+2026-10-19 20:44:39,648 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:52111 - "GET /api/knowledge/search?q=%E9%97%A8%E9%94%81 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52118 - "GET /api/scenes?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52121 - "GET /api/energy/summary?home_id=2&range=day HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52124 - "GET /api/security/alarms?home_id=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52127 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52152 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52153 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52161 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52170 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52181 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52199 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52200 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52254 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52255 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52324 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52325 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52347 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52348 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52352 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52355 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52359 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52360 - "GET /api/scenes?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52362 - "GET /api/floorplan?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52361 - "GET /api/energy/summary?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52366 - "GET /api/chat/sessions?home_id=1&limit=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52365 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52371 - "GET /api/scenes?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52373 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52390 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52391 - "GET /api/chat/sessions?home_id=1&limit=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52396 - "GET /api/energy/summary?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52398 - "GET /api/scenes?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52405 - "GET /api/chat/sessions?home_id=1&limit=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52404 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52410 - "GET /api/knowledge/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52412 - "GET /api/knowledge/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52414 - "GET /api/scenes?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52418 - "GET /api/chat/sessions?home_id=1&limit=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52417 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52422 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52423 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52428 - "GET /api/energy/summary?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52434 - "GET /api/chat/sessions?home_id=1&limit=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52433 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60286 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60288 - "GET /api/scenes?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60292 - "GET /api/knowledge/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60294 - "GET /api/knowledge/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60303 - "GET /api/chat/sessions?home_id=1&limit=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60302 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60308 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60313 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60314 - "GET /api/scenes?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60316 - "GET /api/floorplan?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60319 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60315 - "GET /api/energy/summary?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60331 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60361 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60360 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60368 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60369 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60373 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60372 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60392 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60390 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60393 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60416 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60424 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60423 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60427 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60456 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60455 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56975 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56976 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56981 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56980 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56988 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56992 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56991 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57003 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57080 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57078 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57081 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57082 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57214 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57215 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57212 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57213 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57291 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57294 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57292 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57293 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57342 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57344 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57345 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57343 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57437 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57438 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57440 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57439 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57491 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57493 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57494 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57492 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57554 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57553 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57556 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57555 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57672 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57674 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57675 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57673 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57734 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57735 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57736 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57737 - "GET /api/devices HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57738 - "GET /api/devices/1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57739 - "GET /api/devices/1/readings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57740 - "GET /api/energy/summary HTTP/1.1" 200 OK
+2026-10-19 20:57:45,427 INFO    langchain_openai.chat_models._client_utils | langchain-openai detected HTTP_PROXY, HTTPS_PROXY, http_proxy, https_proxy and no explicit `http_socket_options` / `http_client` / `http_async_client` / `openai_proxy`; skipping the custom `httpx` transport so httpx's env-proxy auto-detection applies. Pass `http_socket_options=[...]` to opt back into kernel-level TCP keepalive tuning on top of the env proxy.
+2026-10-19 20:57:49,694 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:57741 - "POST /api/scenes/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57748 - "GET /api/scenes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57749 - "GET /api/knowledge/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57750 - "GET /api/knowledge/documents HTTP/1.1" 200 OK
+2026-10-19 20:57:50,033 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:57751 - "GET /api/knowledge/search?q=%E7%A9%BA%E8%B0%83%E6%BB%A4%E7%BD%91%E5%A4%9A%E4%B9%85%E6%B8%85%E6%B4%97%E4%B8%80%E6%AC%A1 HTTP/1.1" 200 OK
+2026-10-19 20:57:50,041 INFO    app.api.chat | 收到提问 thread=c-20261019-c9831315: 现在家里耗电情况怎么样
+2026-10-19 20:57:50,217 WARNING app.agent.checkpoint | 使用内存 checkpointer（仅适合开发）；中断现场在进程重启后会丢失
+2026-10-19 20:57:50,240 INFO    app.agent.graph | 已编译并缓存 Agent 图（key=(1428846259776, 1)）
+2026-10-19 20:57:52,533 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:57:52,542 INFO    app.agent.router | 路由完成 2300ms: 激活 ['energy']｜涉及房间 未指定｜用户询问家里耗电情况，属于能源优化领域的能耗数据查询，需激活 energy 助手获取数据。
+2026-10-19 20:57:54,347 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:57:56,045 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:57775 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57776 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57778 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57777 - "GET /api/health HTTP/1.1" 200 OK
+2026-10-19 20:58:05,377 INFO    httpx | HTTP Request: POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-19 20:58:05,383 INFO    app.agent.runner | 对话完成 thread=c-20261019-c9831315 中断=False 结论=能源优化：过去24小时总用电2.39 kWh，电费1.81元。休息区空调是绝对主力（占96.8%电量），且主要在平电时段
+INFO:     127.0.0.1:57755 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57779 - "GET /api/confirmations/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57860 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57863 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57864 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57862 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57933 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57935 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57937 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57936 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58011 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58015 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58016 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58014 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58107 - "GET /api/homes/1/rooms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58108 - "GET /api/devices?home_id=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58110 - "GET /api/confirmations/pending?include_expired=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58109 - "GET /api/health HTTP/1.1" 200 OK

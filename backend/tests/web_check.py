@@ -1,6 +1,6 @@
 """M5 Web 大屏 · 契约对账。
 
-前端（`frontend/dashboard/`）把后端字段写死在 `src/api/` 和各页面里。
+前端（`frontend/dashboard-v2/`，旧版 dashboard/ 已移除）把后端字段写死在 `src/api/` 和各页面里。
 后端一旦改了 schema，前端不会报错、只会**显示成空白或 —— **，这种问题最难查。
 
 所以这个脚本做两件事：
