@@ -35,3 +35,4 @@ frontend/dist/
 *.swp
 .DS_Store
 Thumbs.db
+.workbuddy/
